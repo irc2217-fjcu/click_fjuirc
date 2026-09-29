@@ -3,12 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>大會報到管理 - 原資增能獎勵報到系統</title>
+  <title>大會報到與簽退管理 - 原資增能獎勵報到系統</title>
   
   <!-- 引入 HTML5 相機條碼與 QR Code 辨識引擎 (支援 Code 39 身分證條碼) -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <style>
+    :root {
+      --primary-in: #2e7d32;
+      --primary-in-hover: #1b5e20;
+      --primary-out: #1565c0;
+      --primary-out-hover: #0d47a1;
+      --theme-active: var(--primary-in);
+      --theme-hover: var(--primary-in-hover);
+    }
+
     * { 
       box-sizing: border-box; 
       -webkit-font-smoothing: antialiased; 
@@ -24,6 +33,7 @@
       flex-direction: column; 
       align-items: center; 
       overflow-x: hidden;
+      background-color: #f8fafc;
     }
     
     body::before {
@@ -38,38 +48,35 @@
       background-position: center;
       background-repeat: no-repeat;
       filter: blur(6px); 
-      opacity: 0.25;     
+      opacity: 0.22;     
       z-index: -1;
     }
 
     #apiSettingBanner {
-      background: rgba(204, 17, 17, 0.95);
+      background: rgba(30, 41, 59, 0.95);
       color: #fff;
-      padding: 8px 16px;
+      padding: 9px 16px;
       font-size: 13px;
       text-align: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      position: sticky;
-      top: 0;
-      z-index: 10000;
       width: 100%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      z-index: 100;
     }
     #apiSettingBanner button {
-      color: #ffe082;
-      font-weight: bold;
-      text-decoration: underline;
-      background: none;
+      background: #3b82f6;
+      color: #fff;
       border: none;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
       cursor: pointer;
-      font-size: 13px;
-      width: auto;
-      padding: 0;
-      margin: 0;
-      box-shadow: none;
-      letter-spacing: normal;
+      margin-left: 8px;
+      font-weight: bold;
+    }
+    #apiSettingBanner button:hover {
+      background: #2563eb;
     }
     
-    /* 導覽列：報到與看板 */
     .nav-bar { 
       display: flex; 
       gap: 16px; 
@@ -81,97 +88,126 @@
     }
     .nav-btn { 
       flex: 1; 
-      padding: 18px 16px; 
-      background: rgba(240, 240, 240, 0.85); 
+      padding: 16px 14px; 
+      background: rgba(240, 240, 240, 0.88); 
       backdrop-filter: blur(5px);
       -webkit-backdrop-filter: blur(5px);
       color: #444444; 
       border: 2px solid #dddddd; 
-      border-radius: 20px; 
+      border-radius: 18px; 
       text-decoration: none; 
       text-align: center; 
       font-weight: bold; 
       font-size: 20px; 
       transition: all 0.2s ease;
-      box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     }
     .nav-btn:hover {
       background: #e5e5e5;
       color: #222222;
     }
     .nav-btn.active { 
-      background: #cc1111; 
+      background: #1e293b; 
       color: #ffffff;      
-      border-color: #cc1111;
-      box-shadow: 0 8px 25px rgba(204, 17, 17, 0.4);
+      border-color: #1e293b;
+      box-shadow: 0 6px 20px rgba(30, 41, 59, 0.35);
     }
 
     .card { 
       background: rgba(255, 255, 255, 0.94); 
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      padding: 35px 25px; 
+      padding: 30px 22px; 
       border-radius: 32px; 
-      box-shadow: 0 20px 45px rgba(0,0,0,0.12), 0 6px 16px rgba(0,0,0,0.05); 
+      box-shadow: 0 20px 45px rgba(0,0,0,0.1), 0 6px 16px rgba(0,0,0,0.04); 
       width: 95%; 
-      max-width: 620px; 
+      max-width: 650px; 
       text-align: center; 
-      margin: 25px 0 60px 0;
+      margin: 20px 0 40px 0;
       border: 1px solid rgba(0, 0, 0, 0.08); 
-      overflow: hidden; 
-    }
-    
-    h2 {
-      color: #222222; 
-      font-weight: bold;
-      font-size: 30px; 
-      margin-bottom: 18px;
+      position: relative;
     }
 
-    /* 工作人員相機權限引導框 */
-    .camera-hint-box {
-      background: #fffbeb;
-      border: 2px dashed #f59e0b;
+    /* 模式切換鈕 (簽到 / 簽退) */
+    .mode-switch-wrapper {
+      display: flex;
+      background: #f1f5f9;
       border-radius: 18px;
-      padding: 16px 18px;
-      text-align: center;
+      padding: 6px;
       margin-bottom: 22px;
-      line-height: 1.5;
+      border: 1px solid #e2e8f0;
+    }
+    .mode-tab {
+      flex: 1;
+      padding: 14px 10px;
+      border-radius: 14px;
+      font-size: 19px;
+      font-weight: 800;
+      cursor: pointer;
+      border: none;
+      transition: all 0.25s ease;
+      color: #64748b;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .mode-tab.active-in {
+      background: var(--primary-in);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(46, 125, 50, 0.35);
+    }
+    .mode-tab.active-out {
+      background: var(--primary-out);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(21, 101, 192, 0.35);
+    }
+
+    /* 工作人員相機權限須知 */
+    .camera-hint-box {
+      background: #fefce8;
+      border: 1px solid #fde047;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+      text-align: left;
     }
     .hint-title {
-      font-size: 15px;
       font-weight: bold;
-      color: #b45309;
-      margin-bottom: 5px;
+      color: #854d0e;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
     }
     .hint-msg {
-      font-size: 18px;
-      font-weight: 900;
+      font-size: 13px;
       color: #92400e;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
       margin: 4px 0;
     }
     .hint-sub {
-      font-size: 13px;
+      font-size: 12px;
       color: #78350f;
-      margin-top: 8px;
+      margin-top: 6px;
       border-top: 1px dashed #fde68a;
-      padding-top: 6px;
+      padding-top: 4px;
     }
 
     /* 相機切換按鈕 */
     .camera-toggle-btn {
       width: 100%;
-      padding: 20px 24px;
-      background: #1a73e8;
+      padding: 18px 20px;
+      background: var(--theme-active);
       color: #ffffff;
       border: none;
-      border-radius: 20px;
+      border-radius: 18px;
       font-weight: bold;
-      font-size: 22px;
+      font-size: 21px;
       cursor: pointer;
       transition: all 0.2s;
-      box-shadow: 0 6px 18px rgba(26, 115, 232, 0.3);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -179,23 +215,19 @@
       margin: 0 auto;
     }
     .camera-toggle-btn:hover {
-      background: #1557b0;
+      background: var(--theme-hover);
       transform: translateY(-2px);
-      box-shadow: 0 8px 22px rgba(26, 115, 232, 0.4);
-    }
-    .camera-toggle-btn:active {
-      transform: translateY(0);
     }
 
     /* 相機預覽視窗容器 */
     #cameraWrapper {
       position: relative;
-      margin: 18px auto 10px auto;
+      margin: 16px auto 10px auto;
       width: 100%;
       max-width: 480px;
       border-radius: 20px;
       overflow: hidden;
-      border: 3px solid #cc1111;
+      border: 3px solid var(--theme-active);
       background: #000;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     }
@@ -211,7 +243,7 @@
     .divider-line {
       position: relative;
       text-align: center;
-      margin: 28px 0 18px 0;
+      margin: 26px 0 18px 0;
       border-bottom: 1px solid #e0e0e0;
     }
     .divider-line span {
@@ -220,17 +252,17 @@
       background: #ffffff;
       padding: 0 16px;
       color: #777;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: bold;
     }
     
     input { 
       width: 100%; 
-      padding: 18px; 
-      margin: 12px 0; 
-      border: 2px solid #e0e0e0; 
-      border-radius: 18px; 
-      font-size: 20px; 
+      padding: 16px; 
+      margin: 10px 0; 
+      border: 2px solid #e2e8f0; 
+      border-radius: 16px; 
+      font-size: 19px; 
       text-align: center; 
       transition: all 0.2s;
       background-color: rgba(255, 255, 255, 0.95);
@@ -238,56 +270,79 @@
       text-transform: uppercase;
     }
     input:focus {
-      border-color: #cc1111; 
+      border-color: var(--theme-active); 
       background-color: #ffffff;
-      box-shadow: 0 0 0 5px rgba(204, 17, 17, 0.15);
+      box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.15);
       outline: none;
     }
     
     .btn-submit { 
       width: 100%; 
-      padding: 22px; 
-      background: #cc1111; 
+      padding: 18px; 
+      background: var(--theme-active); 
       color: #ffffff;      
       border: none; 
-      border-radius: 20px; 
+      border-radius: 18px; 
       font-weight: bold; 
-      font-size: 24px; 
+      font-size: 22px; 
       cursor: pointer; 
       transition: all 0.2s; 
-      box-shadow: 0 6px 18px rgba(204, 17, 17, 0.3);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
       margin-top: 10px;
       letter-spacing: 2px; 
     }
     .btn-submit:hover {
-      background: #b30e0e; 
-      box-shadow: 0 8px 22px rgba(204, 17, 17, 0.4);
+      background: var(--theme-hover); 
       transform: translateY(-2px); 
     }
+
+    /* 資訊徽章 */
+    .info-tag {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 15px;
+      font-weight: 600;
+      margin: 4px;
+      background: #e2e8f0;
+      color: #334155;
+    }
+    .info-tag.school { background: #e0f2fe; color: #0369a1; }
+    .info-tag.group { background: #fef3c7; color: #92400e; }
+    .info-tag.title { background: #f1f5f9; color: #475569; }
   </style>
 </head>
 <body>
 
   <!-- API 連線設定頂部條 -->
   <div id="apiSettingBanner">
-    🔗 系統連線狀態：<span id="apiStatusText">尚未設定 GAS API 網址（目前為展示模擬模式）</span>
+    🔗 系統連線狀態：<span id="apiStatusText">尚未設定 GAS API 網址</span>
     <button onclick="promptApiUrl()">[點此設定 API 網址]</button>
   </div>
 
   <div class="nav-bar">
-    <a href="index.html" class="nav-btn active">報到頁面</a>
+    <a href="index.html" class="nav-btn active">報到與簽退</a>
     <a href="query.html" class="nav-btn">查詢看板</a>
   </div>
 
   <div style="flex:1; display:flex; align-items:center; width:100%; justify-content:center; padding-bottom: 50px;">
     <div class="card">
-      <h2 style="margin-top:0;">大會報到管理</h2>
+      
+      <!-- 簽到 / 簽退 模式切換 -->
+      <div class="mode-switch-wrapper">
+        <button id="tabCheckIn" class="mode-tab active-in" onclick="setScanMode('checkIn')">
+          🟢 簽到模式 (Check-In)
+        </button>
+        <button id="tabCheckOut" class="mode-tab" onclick="setScanMode('checkOut')">
+          🔵 簽退模式 (Check-Out)
+        </button>
+      </div>
 
-      <!-- 依主辦指示加入之工作人員相機權限須知 -->
+      <!-- 工作人員相機權限須知 -->
       <div class="camera-hint-box">
         <div class="hint-title">📱 工作人員掃描須知</div>
-        <div class="hint-msg">「請大家點開這個連結，允許相機權限，就可以開始掃描參加者的身分證囉！」</div>
-        <div class="hint-sub">💡 若使用 LINE 開啟遇到相機無法啟用，請點右上方「<strong>…</strong>」選擇「<strong>以預設瀏覽器開啟</strong>」(Safari / Chrome)</div>
+        <div class="hint-msg">「請點開此連結允許相機權限，對準身分證背面條碼即可快速完成作業！」</div>
+        <div class="hint-sub">💡 若使用 LINE 開啟遇相機異常，請點右上角「<strong>…</strong>」選擇「<strong>以預設瀏覽器開啟</strong>」</div>
       </div>
 
       <!-- 掃描與輸入主操作區 -->
@@ -295,13 +350,13 @@
         
         <!-- 相機啟動按鈕 -->
         <button id="btnToggleCamera" onclick="toggleCamera()" class="camera-toggle-btn">
-          📷 開啟相機掃描身分證
+          📷 開啟相機進行【簽到】
         </button>
 
         <!-- 相機視訊視窗 -->
         <div id="cameraWrapper" style="display: none;">
           <div id="reader"></div>
-          <div style="font-size: 13px; color: #fff; background: rgba(0,0,0,0.6); padding: 6px; position: absolute; bottom: 0; left: 0; right: 0;">
+          <div style="font-size: 13px; color: #fff; background: rgba(0,0,0,0.65); padding: 6px; position: absolute; bottom: 0; left: 0; right: 0;">
             請對準身分證背面條碼 (Code 39) 或 QR Code
           </div>
         </div>
@@ -313,44 +368,51 @@
 
         <div id="manualInputGroup">
           <input type="text" id="scannerInput" placeholder="請輸入身分證字號 (如 A123456789)" autocomplete="off">
-          <button class="btn-submit" onclick="doManualScan()">確認報到</button>
+          <button id="btnSubmitManual" class="btn-submit" onclick="doManualScan()">確認簽到</button>
         </div>
       </div>
 
       <!-- 處理中載入中狀態 -->
-      <div id="loading" style="display:none; color:#cc1111; margin:25px; font-weight:bold; font-size: 26px;">
+      <div id="loading" style="display:none; color:var(--theme-active); margin:25px; font-weight:bold; font-size: 24px;">
         ⏳ 處理中，請稍候...
       </div>
       
-      <!-- 報到結果卡片 (依要求僅顯示：姓名、編號、報到成功) -->
+      <!-- 結果顯示卡片 -->
       <div id="resCard" style="display:none; margin-top:20px; border-top:2px solid #eee; padding-top:20px;">
-        <div id="resIcon" style="font-size:65px;"></div>
-        <h2 id="resTitle" style="margin:5px 0; font-size:32px;"></h2>
+        <div id="resIcon" style="font-size:60px;"></div>
+        <h2 id="resTitle" style="margin:5px 0; font-size:28px;"></h2>
         
         <!-- 顯示 姓名 (超大字醒目) -->
-        <div id="resName" style="font-size: 3.5rem; font-weight: 900; color: #222222; margin: 15px 0; letter-spacing: 2px; line-height: 1.1;"></div>
+        <div id="resName" style="font-size: 3.2rem; font-weight: 900; color: #1e293b; margin: 12px 0 6px 0; letter-spacing: 2px; line-height: 1.1;"></div>
         
-        <!-- 顯示 編號 (大字) -->
-        <div id="resIdNo" style="font-size: 2.2rem; font-weight: 800; color: #1a73e8; margin: 10px 0; letter-spacing: 1px;"></div>
+        <!-- 顯示 學校、職稱、組別標籤 -->
+        <div id="resMetaTags" style="margin: 10px 0;"></div>
+
+        <!-- 顯示 時間戳記 -->
+        <div id="resTime" style="font-size: 15px; color: #64748b; margin-top: 8px;"></div>
         
-        <p style="font-size:14px; color:#888; margin-top:18px;">(4秒後自動恢復，可連續掃描)</p>
+        <p style="font-size:13px; color:#94a3b8; margin-top:16px;">(4 秒後自動恢復，可連續掃描)</p>
       </div>
 
     </div>
   </div>
   
   <script>
-    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwQnQrRL0rWlM50-KTjrx2iC8xtYTvoL9e-NL56EiDE7dU_SsgnGT-45eoY3apswwE1xA/exec";
-    let API_URL = localStorage.getItem("CIP_GAS_URL") || DEFAULT_GAS_URL;
+    const STORAGE_KEY = "CLICK_FJUIRC_GAS_URL";
+    const OLD_STORAGE_KEY = "CIP_GAS_URL";
+    const DEFAULT_GAS_URL = "";
+    let API_URL = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(OLD_STORAGE_KEY) || DEFAULT_GAS_URL;
+
+    let currentScanMode = "checkIn"; // 'checkIn' 或 'checkOut'
     let html5QrCode = null;
     let isCameraRunning = false;
-    let isScanningLocked = false; // 防止同一身分證短時間重複觸發
+    let isScanningLocked = false; // 防止重複連續觸發
 
     function promptApiUrl() {
       const input = prompt("請貼上您的 Google Apps Script Web App URL：", API_URL);
       if (input !== null) {
         API_URL = input.trim();
-        localStorage.setItem("CIP_GAS_URL", API_URL);
+        localStorage.setItem(STORAGE_KEY, API_URL);
         updateApiStatus();
       }
     }
@@ -362,10 +424,42 @@
         statusText.style.color = "#a7f3d0";
       } else {
         statusText.textContent = "尚未設定 GAS API 網址（目前為展示模擬模式）";
-        statusText.style.color = "#ffe082";
+        statusText.style.color = "#fde047";
       }
     }
     updateApiStatus();
+
+    // =========================================================================
+    // 模式切換：簽到 (checkIn) / 簽退 (checkOut)
+    // =========================================================================
+    function setScanMode(mode) {
+      currentScanMode = mode;
+      const tabIn = document.getElementById("tabCheckIn");
+      const tabOut = document.getElementById("tabCheckOut");
+      const btnCam = document.getElementById("btnToggleCamera");
+      const btnSub = document.getElementById("btnSubmitManual");
+      const root = document.documentElement;
+
+      if (mode === "checkIn") {
+        tabIn.className = "mode-tab active-in";
+        tabOut.className = "mode-tab";
+        root.style.setProperty("--theme-active", "var(--primary-in)");
+        root.style.setProperty("--theme-hover", "var(--primary-in-hover)");
+        if (!isCameraRunning) {
+          btnCam.innerHTML = "📷 開啟相機進行【簽到】";
+        }
+        btnSub.innerText = "確認簽到";
+      } else {
+        tabIn.className = "mode-tab";
+        tabOut.className = "mode-tab active-out";
+        root.style.setProperty("--theme-active", "var(--primary-out)");
+        root.style.setProperty("--theme-hover", "var(--primary-out-hover)");
+        if (!isCameraRunning) {
+          btnCam.innerHTML = "📷 開啟相機進行【簽退】";
+        }
+        btnSub.innerText = "確認簽退";
+      }
+    }
 
     // =========================================================================
     // 相機掃描條碼 (Code 39 / QR Code) 模組
@@ -376,52 +470,58 @@
       
       if (isCameraRunning) {
         await stopCamera();
-        btn.innerHTML = "📷 開啟相機掃描身分證";
-        btn.style.backgroundColor = "#1a73e8";
+        const actionText = currentScanMode === "checkIn" ? "【簽到】" : "【簽退】";
+        btn.innerHTML = `📷 開啟相機進行${actionText}`;
+        btn.style.backgroundColor = "";
         wrapper.style.display = "none";
       } else {
+        btn.innerHTML = "⏳ 正在啟動鏡頭中...";
+        btn.style.backgroundColor = "#475569";
         wrapper.style.display = "block";
-        btn.innerHTML = "⏳ 正在請求相機權限...";
-        btn.disabled = true;
-        try {
-          await startCamera();
-          btn.innerHTML = "⏹️ 關閉相機";
-          btn.style.backgroundColor = "#5f6368";
-          btn.disabled = false;
-        } catch (err) {
-          btn.disabled = false;
-          btn.innerHTML = "📷 開啟相機掃描身分證";
-          btn.style.backgroundColor = "#1a73e8";
-          wrapper.style.display = "none";
-          alert("無法開啟相機：" + err + "\n\n請確認：\n1. 已允許此網頁的相機存取權限。\n2. 若使用 LINE 瀏覽器，請點選右上角『…』選擇『在預設瀏覽器中開啟』。");
-        }
+        await startCamera();
       }
     }
 
     async function startCamera() {
-      if (!html5QrCode) {
-        // 設定支援的身分證條碼 (Code 39)、Code 128 與 QR Code
-        const formats = [
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.QR_CODE
-        ];
-        html5QrCode = new Html5Qrcode("reader", { formatsToSupport: formats, verbose: false });
+      const btn = document.getElementById("btnToggleCamera");
+      try {
+        if (!html5QrCode) {
+          html5QrCode = new Html5Qrcode("reader");
+        }
+
+        const config = {
+          fps: 15,
+          qrbox: { width: 320, height: 160 },
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.QR_CODE
+          ],
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+          }
+        };
+
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          onScanSuccess,
+          onScanFailure
+        );
+
+        isCameraRunning = true;
+        btn.innerHTML = "⏹️ 關閉相機";
+        btn.style.backgroundColor = "#dc2626";
+
+      } catch (err) {
+        console.error("相機啟動失敗:", err);
+        alert("無法啟動相機！請確認已授予相機使用權限。\n" + err);
+        const actionText = currentScanMode === "checkIn" ? "【簽到】" : "【簽退】";
+        btn.innerHTML = `📷 開啟相機進行${actionText}`;
+        btn.style.backgroundColor = "";
+        document.getElementById("cameraWrapper").style.display = "none";
+        isCameraRunning = false;
       }
-
-      const config = {
-        fps: 15,
-        qrbox: { width: 280, height: 160 },
-        aspectRatio: 1.333333
-      };
-
-      await html5QrCode.start(
-        { facingMode: "environment" },
-        config,
-        onScanSuccess,
-        onScanFailure
-      );
-      isCameraRunning = true;
     }
 
     async function stopCamera() {
@@ -429,7 +529,7 @@
         try {
           await html5QrCode.stop();
         } catch (e) {
-          console.warn("停止相機警告:", e);
+          console.warn("相機停止異常:", e);
         }
         isCameraRunning = false;
       }
@@ -439,11 +539,11 @@
       if (isScanningLocked) return;
 
       const cleanId = parseNationalId(decodedText);
-      if (!cleanId) return;
-
-      isScanningLocked = true;
-      playBeep();
-      doScan(cleanId);
+      if (cleanId) {
+        isScanningLocked = true;
+        playBeep();
+        doScan(cleanId);
+      }
     }
 
     function onScanFailure(error) {
@@ -460,7 +560,7 @@
       return raw;
     }
 
-    // 成功提示音 (Web Audio API 合成音，免外部檔案)
+    // 成功提示音 (Web Audio API 合成音，免外部音效檔)
     function playBeep() {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -469,7 +569,7 @@
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "sine";
-        osc.frequency.setValueAtTime(987.77, ctx.currentTime); // B5 note
+        osc.frequency.setValueAtTime(987.77, ctx.currentTime);
         gain.gain.setValueAtTime(0.2, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.18);
         osc.connect(gain);
@@ -486,7 +586,7 @@
     // =========================================================================
     async function callGasApi(action, payload = {}) {
       if (!API_URL) {
-        return mockScanResponse(payload.idNumber);
+        return mockScanResponse(payload.idNumber, payload.scanType);
       }
       const res = await fetch(API_URL, {
         method: "POST",
@@ -497,22 +597,24 @@
     }
 
     // 展示模擬資料
-    function mockScanResponse(id) {
+    function mockScanResponse(id, scanType) {
       return new Promise(resolve => {
         setTimeout(() => {
           if (id && id.length >= 6) {
             resolve({
               status: "success",
-              idNo: "001",
+              scanType: scanType || "checkIn",
               name: "測試學員",
+              school: "輔仁大學",
+              title: "專任助理",
               groupName: "第一組",
-              reward: "語文競賽特優",
-              isTravelPay: "是"
+              checkInTime: "2026-09-29 09:00:00",
+              checkOutTime: scanType === "checkOut" ? "2026-09-29 17:00:00" : ""
             });
           } else {
             resolve({ status: "not_found" });
           }
-        }, 400);
+        }, 350);
       });
     }
 
@@ -536,74 +638,79 @@
       document.getElementById('loading').style.display = 'block';
       
       try {
-        const res = await callGasApi("processScan", { idNumber: cleanId });
+        const res = await callGasApi("processScan", { 
+          idNumber: cleanId,
+          scanType: currentScanMode 
+        });
+
         document.getElementById('loading').style.display = 'none';
         const card = document.getElementById('resCard'); 
         card.style.display = 'block';
         manualInput.value = "";
         
+        const actionLabel = currentScanMode === "checkIn" ? "簽到" : "簽退";
+
         if (res.status === "success" || res.status === "already") {
           if (res.status === "success") {
-            document.getElementById('resIcon').innerText = "✅";
-            document.getElementById('resTitle').innerText = "報到成功";
-            document.getElementById('resTitle').style.color = "#2e7d32";
+            document.getElementById('resIcon').innerText = currentScanMode === "checkIn" ? "✅" : "🚪";
+            document.getElementById('resTitle').innerText = `${actionLabel}成功`;
+            document.getElementById('resTitle').style.color = currentScanMode === "checkIn" ? "#16a34a" : "#2563eb";
           } else {
             document.getElementById('resIcon').innerText = "⚠️";
-            document.getElementById('resTitle').innerText = "重複報到";
-            document.getElementById('resTitle').style.color = "#e65100";
+            document.getElementById('resTitle').innerText = `重複${actionLabel}`;
+            document.getElementById('resTitle').style.color = "#ea580c";
           }
           
-          // 僅顯示 姓名 與 編號 (依指示不顯示組別、獎勵項目、交通費)
+          // 顯示姓名 (超大字醒目)
           const nameEl = document.getElementById('resName');
-          nameEl.style.fontSize = '3.5rem';
-          nameEl.style.color = '#222222';
+          nameEl.style.fontSize = '3.2rem';
+          nameEl.style.color = '#1e293b';
           nameEl.innerText = res.name || '';
           
-          const idNoEl = document.getElementById('resIdNo');
-          idNoEl.innerText = res.idNo ? ("編號：" + res.idNo) : '';
+          // 顯示學校、職稱、組別標籤
+          const metaEl = document.getElementById('resMetaTags');
+          let metaHtml = "";
+          if (res.school) metaHtml += `<span class="info-tag school">🏫 ${res.school}</span>`;
+          if (res.groupName) metaHtml += `<span class="info-tag group">👥 ${res.groupName}</span>`;
+          if (res.title) metaHtml += `<span class="info-tag title">💼 ${res.title}</span>`;
+          metaEl.innerHTML = metaHtml;
+
+          // 顯示時間戳記
+          const timeEl = document.getElementById('resTime');
+          if (currentScanMode === "checkIn") {
+            timeEl.innerText = res.checkInTime ? `簽到時間：${res.checkInTime}` : '';
+          } else {
+            timeEl.innerText = res.checkOutTime ? `簽退時間：${res.checkOutTime}` : '';
+          }
           
           setTimeout(resetUI, 4000);
           
         } else {
           document.getElementById('resIcon').innerText = "❌";
           document.getElementById('resTitle').innerText = "查無此身分證字號";
-          document.getElementById('resTitle').style.color = "#d32f2f";
+          document.getElementById('resTitle').style.color = "#dc2626";
           
           const nameEl = document.getElementById('resName');
-          nameEl.style.fontSize = '1.8rem';
-          nameEl.style.color = '#d32f2f';
-          nameEl.innerText = "名單中無此身分證字號，請工作人員再次核對！";
+          nameEl.style.fontSize = '1.6rem';
+          nameEl.style.color = '#dc2626';
+          nameEl.innerText = "名單中查無此身分證字號，請再次確認！";
           
-          document.getElementById('resIdNo').innerText = "";
+          document.getElementById('resMetaTags').innerHTML = "";
+          document.getElementById('resTime').innerText = "";
           setTimeout(resetUI, 4000);
         }
       } catch (err) {
         document.getElementById('loading').style.display = 'none';
-        alert("連線錯誤：" + err);
+        alert("API 通訊異常：" + err.toString());
         resetUI();
       }
     }
-    
+
     function resetUI() {
       document.getElementById('resCard').style.display = 'none';
       document.getElementById('scannerSection').style.display = 'block';
-      
-      const nameEl = document.getElementById('resName');
-      nameEl.innerText = "";
-      nameEl.style.fontSize = '3.5rem';
-      nameEl.style.color = '#222222';
-      
-      document.getElementById('resIdNo').innerText = ""; 
-      document.getElementById('resTitle').innerText = "";
-      document.getElementById('resIcon').innerText = "";
-      
-      manualInput.value = "";
       isScanningLocked = false;
-      
-      // 若相機未開啟，則聚焦在手動輸入框；相機運行時避免彈出虛擬鍵盤阻擋鏡頭
-      if (!isCameraRunning) {
-        manualInput.focus();
-      }
+      manualInput.focus();
     }
   </script>
 </body>

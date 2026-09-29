@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>研習報到統計看板 - 原資增能獎勵報到系統</title>
+  <title>研習報到與簽退統計看板 - 原資增能獎勵報到系統</title>
   
   <style>
     * { 
@@ -21,6 +21,7 @@
       flex-direction: column; 
       align-items: center; 
       overflow-x: hidden;
+      background-color: #f8fafc;
     }
     
     body::before {
@@ -35,7 +36,7 @@
       background-position: center;
       background-repeat: no-repeat;
       filter: blur(6px); 
-      opacity: 0.25;     
+      opacity: 0.22;     
       z-index: -1;
     }
     
@@ -43,124 +44,209 @@
       display: flex; 
       gap: 16px; 
       width: 95%; 
-      max-width: 650px; 
-      margin-top: 30px; 
+      max-width: 960px; 
+      margin-top: 25px; 
       z-index: 10; 
       flex-shrink: 0;
     }
     .nav-btn { 
       flex: 1; 
-      padding: 22px 16px; 
-      background: rgba(240, 240, 240, 0.85); 
+      padding: 16px 14px; 
+      background: rgba(240, 240, 240, 0.88); 
       backdrop-filter: blur(5px);
       -webkit-backdrop-filter: blur(5px);
       color: #444444; 
       border: 2px solid #dddddd; 
-      border-radius: 20px; 
+      border-radius: 18px; 
       text-decoration: none; 
       text-align: center; 
       font-weight: bold; 
-      font-size: 22px; 
+      font-size: 20px; 
       transition: all 0.2s ease;
-      box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     }
     .nav-btn:hover {
       background: #e5e5e5;
       color: #222222;
     }
     .nav-btn.active { 
-      background: #cc1111; 
+      background: #1e293b; 
       color: #ffffff;      
-      border-color: #cc1111;
-      box-shadow: 0 8px 25px rgba(204, 17, 17, 0.4);
+      border-color: #1e293b;
+      box-shadow: 0 6px 20px rgba(30, 41, 59, 0.35);
     }
 
     .card { 
-      background: rgba(255, 255, 255, 0.92); 
+      background: rgba(255, 255, 255, 0.95); 
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      padding: 35px 25px; 
-      border-radius: 36px; 
-      box-shadow: 0 25px 50px rgba(0,0,0,0.12), 0 8px 20px rgba(0,0,0,0.06); 
+      padding: 30px 22px; 
+      border-radius: 32px; 
+      box-shadow: 0 20px 45px rgba(0,0,0,0.1), 0 6px 16px rgba(0,0,0,0.04); 
       width: 95%; 
-      max-width: 960px; 
+      max-width: 1200px; 
       text-align: center; 
-      margin: 30px 0 60px 0;
+      margin: 20px 0 60px 0;
       border: 1px solid rgba(0, 0, 0, 0.08); 
-      overflow: hidden; 
     }
     
     h2 {
-      color: #222222; 
+      color: #1e293b; 
       font-weight: bold;
-      font-size: 30px; 
-      margin-bottom: 20px;
-    }
-    
-    input, select { 
-      border: 2px solid #e0e0e0; 
-      border-radius: 14px; 
-      transition: all 0.2s;
-      background-color: rgba(255, 255, 255, 0.95);
-      color: #222222; 
-      box-sizing: border-box;
-      outline: none;
-    }
-    input:focus, select:focus {
-      border-color: #cc1111; 
-      background-color: #ffffff;
+      font-size: 28px; 
+      margin-top: 0;
+      margin-bottom: 18px;
     }
 
+    /* 統計小卡指標區 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-box {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 14px 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+      border-left: 5px solid #64748b;
+    }
+    .stat-box.total { border-left-color: #1e293b; }
+    .stat-box.in { border-left-color: #16a34a; }
+    .stat-box.not-in { border-left-color: #dc2626; }
+    .stat-box.out { border-left-color: #2563eb; }
+    
+    .stat-title { font-size: 13px; color: #64748b; font-weight: 600; margin-bottom: 4px; }
+    .stat-num { font-size: 28px; font-weight: 800; color: #1e293b; }
+    .stat-num span { font-size: 14px; font-weight: normal; color: #64748b; margin-left: 2px; }
+
+    /* 篩選控制器 */
+    .filter-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+      align-items: center;
+    }
+    .filter-input {
+      flex: 2;
+      min-width: 240px;
+      padding: 12px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .filter-input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .filter-select {
+      flex: 1;
+      min-width: 140px;
+      padding: 12px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+      cursor: pointer;
+    }
+    .filter-select:focus {
+      border-color: #2563eb;
+    }
+
+    .btn-action {
+      padding: 11px 18px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-refresh { background: #334155; color: #fff; }
+    .btn-refresh:hover { background: #1e293b; }
+    .btn-export { background: #16a34a; color: #fff; }
+    .btn-export:hover { background: #15803d; }
+    .btn-mask { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .btn-mask:hover { background: #e2e8f0; }
+
+    /* 表格樣式 */
     .table-container { 
       width: 100%; 
       overflow-x: auto; 
-      background: rgba(255, 255, 255, 0.95); 
-      border-radius: 20px; 
-      margin-top: 20px; 
-      border: 1px solid rgba(0, 0, 0, 0.08);
-      box-shadow: inset 0 2px 5px rgba(0,0,0,0.01);
+      background: #ffffff; 
+      border-radius: 18px; 
+      margin-top: 10px; 
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
     }
     table { 
       width: 100%; 
       border-collapse: collapse; 
-      font-size: 15px; 
+      font-size: 14px; 
       text-align: left; 
     }
     th, td { 
-      padding: 14px 14px; 
-      border-bottom: 1px solid #eeeeee; 
+      padding: 12px 14px; 
+      border-bottom: 1px solid #f1f5f9; 
       white-space: nowrap;
-      color: #333333; 
+      color: #334155; 
+      vertical-align: middle;
     }
     th { 
-      background-color: #f7f7f7; 
-      color: #555555; 
-      font-weight: bold;
-      border-bottom: 2px solid #e0e0e0;
+      background-color: #f8fafc; 
+      color: #475569; 
+      font-weight: 700;
+      border-bottom: 2px solid #e2e8f0;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tr:hover td {
+      background-color: #f8fafc;
     }
 
-    .badge-status-yes {
-      background: #e6f4ea;
-      color: #137333;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-weight: bold;
-      font-size: 13px;
-    }
-    .badge-status-no {
-      background: #fce8e6;
-      color: #c5221f;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-weight: bold;
-      font-size: 13px;
-    }
-    .badge-travel {
-      background: #e8f0fe;
-      color: #1a73e8;
-      padding: 3px 10px;
+    /* 狀態徽章 */
+    .badge-in {
+      background: #dcfce7;
+      color: #15803d;
+      padding: 4px 10px;
       border-radius: 12px;
-      font-weight: bold;
+      font-weight: 700;
+      font-size: 12px;
+      display: inline-block;
+    }
+    .badge-out {
+      background: #dbeafe;
+      color: #1d4ed8;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 12px;
+      display: inline-block;
+    }
+    .badge-none {
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 12px;
+      display: inline-block;
+    }
+    .badge-diet {
+      background: #f1f5f9;
+      color: #475569;
+      padding: 3px 8px;
+      border-radius: 8px;
       font-size: 12px;
     }
   </style>
@@ -168,69 +254,104 @@
 <body>
 
   <div class="nav-bar">
-    <a href="index.html" class="nav-btn">報到頁面</a>
+    <a href="index.html" class="nav-btn">報到與簽退</a>
     <a href="query.html" class="nav-btn active">查詢看板</a>
   </div>
   
   <div class="card">
-    <h2 style="margin-top:0;">大會報到即時看板</h2>
-    <div id="diag" style="background:#fff3e0; padding:10px; border-radius:10px; margin-bottom:15px; font-size:14px; color:#e65100; font-weight:bold;">⏳ 正在連線讀取名冊...</div>
+    <h2>大會報到與簽退即時看板</h2>
+    <div id="diag" style="background:#fff3e0; padding:10px; border-radius:12px; margin-bottom:18px; font-size:14px; color:#c2410c; font-weight:bold;">⏳ 正在連線讀取名冊...</div>
     
-    <!-- 統計看板區塊 -->
-    <div style="background:rgba(255,255,255,0.85); padding:18px; border-radius:18px; border:1px solid #ddd; margin-bottom:18px;">
-      <div style="display:flex; justify-content:space-around; flex-wrap: wrap; gap: 15px;">
-        <div>應到總人數：<span id="cTotal" style="font-size:26px; font-weight:bold; color:#222;">0</span> 人</div>
-        <div>已報到：<span id="cIn" style="font-size:26px; font-weight:bold; color:#2e7d32;">0</span> 人</div>
-        <div>未報到：<span id="cNot" style="font-size:26px; font-weight:bold; color:#d32f2f;">0</span> 人</div>
-        <div>交通費可核銷：<span id="cTravel" style="font-size:26px; font-weight:bold; color:#1a73e8;">0</span> 人</div>
+    <!-- 統計小卡指標區 -->
+    <div class="stats-grid">
+      <div class="stat-box total">
+        <div class="stat-title">應到總人數</div>
+        <div class="stat-num" id="cTotal">0<span>人</span></div>
       </div>
-      <div style="text-align:center; margin-top:12px; border-top:1px solid #eee; padding-top:10px; color:#666; font-size: 14px;">
-        目前篩選條件顯示：<span id="fTotal" style="font-weight:bold; color:#cc1111; font-size: 18px;">0</span> 人
-        <button onclick="fetchAdminData()" style="margin-left:15px; padding:4px 14px; font-size:13px; width:auto; border-radius:8px; display:inline-block; margin-top:0; box-shadow:none;">🔄 重新整理</button>
+      <div class="stat-box in">
+        <div class="stat-title">已簽到人數</div>
+        <div class="stat-num" id="cIn" style="color: #15803d;">0<span>人</span></div>
+      </div>
+      <div class="stat-box not-in">
+        <div class="stat-title">未簽到人數</div>
+        <div class="stat-num" id="cNotIn" style="color: #dc2626;">0<span>人</span></div>
+      </div>
+      <div class="stat-box out">
+        <div class="stat-title">已簽退人數</div>
+        <div class="stat-num" id="cOut" style="color: #1d4ed8;">0<span>人</span></div>
       </div>
     </div>
-    
-    <!-- 篩選列 -->
-    <div style="display:flex; gap:10px; justify-content:center; margin-bottom:15px; flex-wrap: wrap; align-items: center;">
-      <input type="text" id="searchKeyword" oninput="draw()" placeholder="🔍 搜尋姓名、身分證、編號或獎勵項目..." style="max-width: 100%; width: 100%; padding: 14px; font-size: 16px; text-align: left;">
+
+    <!-- 篩選列與操作工具列 -->
+    <div class="filter-wrapper">
+      <input type="text" id="searchKeyword" class="filter-input" oninput="draw()" placeholder="🔍 搜尋學校、姓名、身分證、電話、職稱、組別或備註...">
       
-      <!-- 狀態篩選 -->
-      <select id="fStatus" onchange="draw()" style="flex: 1; min-width: 130px; padding: 12px; font-size: 15px;">
-        <option value="all">所有報到狀態</option>
-        <option value="in">已報到</option>
-        <option value="not">未報到</option>
+      <!-- 簽到狀態篩選 -->
+      <select id="fCheckIn" class="filter-select" onchange="draw()">
+        <option value="all">簽到狀態 (全部)</option>
+        <option value="in">已簽到</option>
+        <option value="not">未簽到</option>
+      </select>
+
+      <!-- 簽退狀態篩選 -->
+      <select id="fCheckOut" class="filter-select" onchange="draw()">
+        <option value="all">簽退狀態 (全部)</option>
+        <option value="out">已簽退</option>
+        <option value="not">未簽退</option>
       </select>
       
+      <!-- 學校篩選 -->
+      <select id="fSchool" class="filter-select" onchange="draw()">
+        <option value="all">學校名稱 (全部)</option>
+      </select>
+
       <!-- 組別篩選 -->
-      <select id="fGroup" onchange="draw()" style="flex: 1; min-width: 130px; padding: 12px; font-size: 15px;">
-        <option value="all">所有組別</option>
-      </select>
-      
-      <!-- 交通費核銷篩選 -->
-      <select id="fTravel" onchange="draw()" style="flex: 1; min-width: 130px; padding: 12px; font-size: 15px;">
-        <option value="all">交通費核銷 (全部)</option>
-        <option value="是">可核銷 (是)</option>
-        <option value="否">不核銷 (否)</option>
+      <select id="fGroup" class="filter-select" onchange="draw()">
+        <option value="all">組別 (全部)</option>
       </select>
 
-      <!-- 獎勵項目篩選 -->
-      <select id="fReward" onchange="draw()" style="flex: 1; min-width: 130px; padding: 12px; font-size: 15px;">
-        <option value="all">所有獎勵項目</option>
+      <!-- 飲食習慣篩選 -->
+      <select id="fDiet" class="filter-select" onchange="draw()">
+        <option value="all">飲食習慣 (全部)</option>
       </select>
     </div>
 
-    <!-- 名冊表格 (純粹 7 欄位) -->
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; font-size:14px; color:#64748b;">
+      <div>
+        目前條件符合：<strong id="fCount" style="color:#2563eb; font-size:16px;">0</strong> 人
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-action btn-mask" onclick="toggleMaskId()">
+          <span id="maskBtnText">👁️ 顯示完整身分證</span>
+        </button>
+        <button class="btn-action btn-export" onclick="exportCsv()">
+          📥 匯出篩選結果 (CSV)
+        </button>
+        <button class="btn-action btn-refresh" onclick="fetchAdminData()">
+          🔄 重新整理
+        </button>
+      </div>
+    </div>
+
+    <!-- 名冊表格 (完整 14 欄位結構) -->
     <div class="table-container">
       <table>
         <thead>
           <tr>
-            <th style="width: 10%; text-align: center;">編號</th>
-            <th style="width: 12%; text-align: center;">組別</th>
-            <th style="width: 16%;">身分證字號</th>
-            <th style="width: 16%;">姓名</th>
-            <th style="width: 22%;">獎勵項目</th>
-            <th style="width: 12%; text-align: center;">交通費</th>
-            <th style="width: 12%; text-align: center;">報到狀態</th>
+            <th style="width: 5%;">序號</th>
+            <th>學校名稱</th>
+            <th>姓名</th>
+            <th>職稱</th>
+            <th>組別</th>
+            <th>身分證字號</th>
+            <th>聯絡電話</th>
+            <th>飲食習慣</th>
+            <th>去程</th>
+            <th>回程</th>
+            <th>簽到時間</th>
+            <th>簽退時間</th>
+            <th>時數</th>
+            <th>備註</th>
           </tr>
         </thead>
         <tbody id="tb"></tbody>
@@ -239,17 +360,28 @@
   </div>
 
   <script>
+    const STORAGE_KEY = "CLICK_FJUIRC_GAS_URL";
+    const OLD_STORAGE_KEY = "CIP_GAS_URL";
+    const DEFAULT_GAS_URL = "";
+    let API_URL = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(OLD_STORAGE_KEY) || DEFAULT_GAS_URL;
+
     let db = [];
-    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwQnQrRL0rWlM50-KTjrx2iC8xtYTvoL9e-NL56EiDE7dU_SsgnGT-45eoY3apswwE1xA/exec";
-    let API_URL = localStorage.getItem("CIP_GAS_URL") || DEFAULT_GAS_URL;
+    let isMasked = true; // 身分證隱碼狀態
 
     window.onload = function() {
       fetchAdminData();
     };
 
+    function toggleMaskId() {
+      isMasked = !isMasked;
+      document.getElementById('maskBtnText').innerText = isMasked ? "👁️ 顯示完整身分證" : "🔒 遮罩身分證末5碼";
+      draw();
+    }
+
     function maskId(idStr) {
       if (!idStr) return "-";
-      let clean = idStr.toString().trim();
+      if (!isMasked) return idStr;
+      const clean = idStr.trim();
       if (clean.length >= 5) {
         return clean.substring(0, 5) + "*****";
       }
@@ -257,166 +389,264 @@
     }
 
     async function fetchAdminData() {
-      const d = document.getElementById('diag');
-      d.innerHTML = "⏳ 正在更新名冊數據...";
-      d.style.background = "#fff3e0"; 
-      d.style.color = "#e65100";
+      const diag = document.getElementById("diag");
+      diag.style.display = "block";
+      diag.style.background = "#fff3e0";
+      diag.style.color = "#c2410c";
+      diag.innerText = "⏳ 正在連線讀取名冊...";
 
-      if (API_URL) {
-        try {
-          const res = await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({ action: "getAdminData" })
-          });
-          const result = await res.json();
-          if (result.success) {
-            d.innerHTML = "✅ 連線成功 (共 " + result.data.length + " 筆名單)";
-            d.style.background = "#e8f5e9"; 
-            d.style.color = "#2e7d32";
-            db = result.data; 
-            initFilters();
-            draw();
-          } else {
-            d.innerHTML = "❌ 失敗: " + (result.error || "未知錯誤");
-            d.style.background = "#ffebee"; 
-            d.style.color = "#d32f2f";
-          }
-        } catch (err) {
-          d.innerHTML = "❌ 連線錯誤: " + err.toString();
-          d.style.background = "#ffebee"; 
-          d.style.color = "#d32f2f";
+      if (!API_URL) {
+        diag.style.background = "#fee2e2";
+        diag.style.color = "#991b1b";
+        diag.innerHTML = `⚠️ 尚未設定 GAS API 網址！請先在 <a href="index.html" style="color:#2563eb; font-weight:bold;">報到頁面</a> 點擊上方設定 API 網址。`;
+        return;
+      }
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action: "getAdminData" })
+        });
+        const json = await res.json();
+
+        if (json.success && json.data) {
+          db = json.data;
+          diag.style.display = "none";
+          populateFilters();
+          draw();
+        } else {
+          diag.style.background = "#fee2e2";
+          diag.style.color = "#991b1b";
+          diag.innerText = "❌ 讀取失敗：" + (json.error || "未知錯誤");
         }
-      } else {
-        // 展示模式模擬資料
-        d.innerHTML = "💡 展示模式 (模擬資料)";
-        d.style.background = "#e8f0fe"; 
-        d.style.color = "#1967d2";
-        db = [
-          ["001", "第一組", "A123456789", "陳大文", "語文競賽特優", "2026-08-20 08:45:12", "是"],
-          ["002", "第二組", "B234567890", "李曉明", "原民專門人才卓越獎", "", "否"],
-          ["003", "第一組", "C123987654", "張小美", "學術專利深造獎勵", "2026-08-20 09:12:00", "是"],
-          ["004", "第三組", "D223344556", "王志明", "專題研究計畫甲等", "", "是"]
-        ];
-        initFilters();
-        draw();
+      } catch (err) {
+        diag.style.background = "#fee2e2";
+        diag.style.color = "#991b1b";
+        diag.innerText = "❌ 網路連線錯誤：" + err.toString();
       }
     }
 
-    function initFilters() {
-      const groupSet = new Set();
-      const rewardSet = new Set();
+    // 動態填入學校、組別、飲食下拉選單選項
+    function populateFilters() {
+      const schools = new Set();
+      const groups = new Set();
+      const diets = new Set();
 
-      // 索引 1: 組別, 索引 4: 獎勵項目
       db.forEach(r => {
-        if (r[1] && String(r[1]).trim() !== "") groupSet.add(String(r[1]).trim());
-        if (r[4] && String(r[4]).trim() !== "") rewardSet.add(String(r[4]).trim());
+        if (r[0]) schools.add(r[0]);   // 學校
+        if (r[13]) groups.add(r[13]); // 組別
+        if (r[5]) diets.add(r[5]);    // 飲食習慣
       });
 
-      const fGroup = document.getElementById('fGroup');
-      const fReward = document.getElementById('fReward');
+      populateSelect("fSchool", schools, "學校名稱 (全部)");
+      populateSelect("fGroup", groups, "組別 (全部)");
+      populateSelect("fDiet", diets, "飲食習慣 (全部)");
+    }
 
-      fGroup.innerHTML = '<option value="all">所有組別</option>';
-      Array.from(groupSet).sort().forEach(g => {
-        fGroup.innerHTML += `<option value="${g}">${g}</option>`;
+    function populateSelect(elemId, setObj, defaultText) {
+      const select = document.getElementById(elemId);
+      const currentVal = select.value;
+      select.innerHTML = `<option value="all">${defaultText}</option>`;
+      Array.from(setObj).sort().forEach(val => {
+        const opt = document.createElement("option");
+        opt.value = val;
+        opt.textContent = val;
+        select.appendChild(opt);
       });
+      if (currentVal && setObj.has(currentVal)) {
+        select.value = currentVal;
+      }
+    }
 
-      fReward.innerHTML = '<option value="all">所有獎勵項目</option>';
-      Array.from(rewardSet).sort().forEach(rw => {
-        fReward.innerHTML += `<option value="${rw}">${rw}</option>`;
+    // 取得目前篩選後的資料集
+    function getFilteredData() {
+      const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
+      const checkInFilter = document.getElementById("fCheckIn").value;
+      const checkOutFilter = document.getElementById("fCheckOut").value;
+      const schoolFilter = document.getElementById("fSchool").value;
+      const groupFilter = document.getElementById("fGroup").value;
+      const dietFilter = document.getElementById("fDiet").value;
+
+      return db.filter(r => {
+        // r[0]: 學校, r[1]: 姓名, r[2]: 職稱, r[3]: 身分證, r[4]: 電話, r[5]: 飲食, r[6]: 去程, r[7]: 回程, r[8]: 備註欄, r[9]: 簽到, r[10]: 簽退, r[11]: 時數, r[12]: 備註, r[13]: 組別
+        const school = r[0] || "";
+        const name = r[1] || "";
+        const title = r[2] || "";
+        const idNo = r[3] || "";
+        const phone = r[4] || "";
+        const diet = r[5] || "";
+        const note1 = r[8] || "";
+        const checkIn = r[9] || "";
+        const checkOut = r[10] || "";
+        const note2 = r[12] || "";
+        const group = r[13] || "";
+
+        // 關鍵字搜尋
+        if (kw) {
+          const match = school.toLowerCase().includes(kw) ||
+                        name.toLowerCase().includes(kw) ||
+                        title.toLowerCase().includes(kw) ||
+                        idNo.toLowerCase().includes(kw) ||
+                        phone.toLowerCase().includes(kw) ||
+                        group.toLowerCase().includes(kw) ||
+                        note1.toLowerCase().includes(kw) ||
+                        note2.toLowerCase().includes(kw);
+          if (!match) return false;
+        }
+
+        // 簽到狀態篩選
+        if (checkInFilter === "in" && !checkIn) return false;
+        if (checkInFilter === "not" && checkIn) return false;
+
+        // 簽退狀態篩選
+        if (checkOutFilter === "out" && !checkOut) return false;
+        if (checkOutFilter === "not" && checkOut) return false;
+
+        // 學校篩選
+        if (schoolFilter !== "all" && school !== schoolFilter) return false;
+
+        // 組別篩選
+        if (groupFilter !== "all" && group !== groupFilter) return false;
+
+        // 飲食篩選
+        if (dietFilter !== "all" && diet !== dietFilter) return false;
+
+        return true;
       });
     }
 
+    // 繪製統計卡與表格
     function draw() {
-      const keyword = document.getElementById('searchKeyword').value.trim().toUpperCase();
-      const sStatus = document.getElementById('fStatus').value;
-      const sGroup = document.getElementById('fGroup').value;
-      const sTravel = document.getElementById('fTravel').value;
-      const sReward = document.getElementById('fReward').value;
-      const tb = document.getElementById('tb');
-
-      tb.innerHTML = "";
-
-      let countIn = 0;
-      let countNot = 0;
-      let countTravel = 0;
-      let countFiltered = 0;
+      // 1. 全局統計計算
+      const total = db.length;
+      let inCount = 0;
+      let outCount = 0;
 
       db.forEach(r => {
-        // 7 欄位結構對應：
-        // r[0]: 編號
-        // r[1]: 組別
-        // r[2]: 身分證字號
-        // r[3]: 姓名
-        // r[4]: 獎勵項目
-        // r[5]: 報到時間
-        // r[6]: 交通費核銷否
-        const idNo = r[0] || '-';
-        const groupName = r[1] || '-';
-        const rawId = r[2] || '';
-        const name = r[3] || '-';
-        const reward = r[4] || '-';
-        const checkInTime = r[5] ? String(r[5]).trim() : '';
-        const travelPay = r[6] ? String(r[6]).trim() : '否';
-
-        const isCheckedIn = (checkInTime !== "");
-        if (isCheckedIn) countIn++;
-        else countNot++;
-
-        if (travelPay === "是") countTravel++;
-
-        // 搜尋過濾
-        const matchKeyword = (keyword === "") ||
-          String(idNo).toUpperCase().includes(keyword) ||
-          String(rawId).toUpperCase().includes(keyword) ||
-          String(name).toUpperCase().includes(keyword) ||
-          String(reward).toUpperCase().includes(keyword) ||
-          String(groupName).toUpperCase().includes(keyword);
-
-        // 狀態過濾
-        let matchStatus = true;
-        if (sStatus === "in") matchStatus = isCheckedIn;
-        if (sStatus === "not") matchStatus = !isCheckedIn;
-
-        // 組別過濾
-        const matchGroup = (sGroup === "all") || (groupName === sGroup);
-
-        // 交通費過濾
-        const matchTravel = (sTravel === "all") || (travelPay === sTravel);
-
-        // 獎勵項目過濾
-        const matchReward = (sReward === "all") || (reward === sReward);
-
-        if (matchKeyword && matchStatus && matchGroup && matchTravel && matchReward) {
-          countFiltered++;
-
-          let statusBadge = isCheckedIn 
-            ? `<span class="badge-status-yes">✅ 已報到<br><small style="font-size:11px; color:#555;">${checkInTime.split(' ')[1] || checkInTime}</small></span>` 
-            : `<span class="badge-status-no">未報到</span>`;
-
-          let travelBadge = (travelPay === "是")
-            ? `<span class="badge-travel">可核銷</span>`
-            : `<span style="color:#999; font-size:13px;">無</span>`;
-
-          tb.innerHTML += `
-            <tr style="background:${isCheckedIn ? 'rgba(230, 244, 234, 0.3)' : 'none'};">
-              <td style="text-align:center; font-weight:bold; color:#1a73e8;">${idNo}</td>
-              <td style="text-align:center; font-weight:bold; color:#cc1111;">${groupName}</td>
-              <td>${maskId(rawId)}</td>
-              <td><b>${name}</b></td>
-              <td>${reward}</td>
-              <td style="text-align:center;">${travelBadge}</td>
-              <td style="text-align:center;">${statusBadge}</td>
-            </tr>
-          `;
-        }
+        if (r[9]) inCount++;  // 簽到
+        if (r[10]) outCount++; // 簽退
       });
 
-      document.getElementById('cTotal').innerText = db.length;
-      document.getElementById('cIn').innerText = countIn;
-      document.getElementById('cNot').innerText = countNot;
-      document.getElementById('cTravel').innerText = countTravel;
-      document.getElementById('fTotal').innerText = countFiltered;
+      document.getElementById("cTotal").innerHTML = `${total}<span>人</span>`;
+      document.getElementById("cIn").innerHTML = `${inCount}<span>人</span>`;
+      document.getElementById("cNotIn").innerHTML = `${total - inCount}<span>人</span>`;
+      document.getElementById("cOut").innerHTML = `${outCount}<span>人</span>`;
+
+      // 2. 篩選後的列表
+      const filtered = getFilteredData();
+      document.getElementById("fCount").innerText = filtered.length;
+
+      const tb = document.getElementById("tb");
+      tb.innerHTML = "";
+
+      if (filtered.length === 0) {
+        tb.innerHTML = `<tr><td colspan="14" style="text-align: center; color: #94a3b8; padding: 35px;">⚠️ 無符合條件的學員資料</td></tr>`;
+        return;
+      }
+
+      filtered.forEach((r, idx) => {
+        const tr = document.createElement("tr");
+
+        const school = r[0] || "-";
+        const name = r[1] || "-";
+        const title = r[2] || "-";
+        const idNo = r[3] || "";
+        const phone = r[4] || "-";
+        const diet = r[5] || "-";
+        const depart = r[6] || "-";
+        const returnTrip = r[7] || "-";
+        const note1 = r[8] || "";
+        const checkIn = r[9] || "";
+        const checkOut = r[10] || "";
+        const hours = r[11] || "-";
+        const note2 = r[12] || "";
+        const group = r[13] || "-";
+
+        // 簽到 Badge
+        const checkInHtml = checkIn 
+          ? `<span class="badge-in">✅ ${checkIn}</span>`
+          : `<span class="badge-none">未簽到</span>`;
+
+        // 簽退 Badge
+        const checkOutHtml = checkOut 
+          ? `<span class="badge-out">🚪 ${checkOut}</span>`
+          : `<span class="badge-none" style="background:#f1f5f9; color:#94a3b8;">未簽退</span>`;
+
+        // 飲食
+        const dietHtml = diet ? `<span class="badge-diet">${diet}</span>` : "-";
+
+        // 合併備註
+        let fullNote = note1;
+        if (note2) fullNote = fullNote ? `${fullNote} / ${note2}` : note2;
+        if (!fullNote) fullNote = "-";
+
+        tr.innerHTML = `
+          <td style="text-align:center; color:#94a3b8; font-size:12px;">${idx + 1}</td>
+          <td><strong>${school}</strong></td>
+          <td><strong>${name}</strong></td>
+          <td>${title}</td>
+          <td><span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:6px; font-weight:600; font-size:12px;">${group}</span></td>
+          <td style="font-family:monospace; font-size:13px;">${maskId(idNo)}</td>
+          <td>${phone}</td>
+          <td>${dietHtml}</td>
+          <td>${depart}</td>
+          <td>${returnTrip}</td>
+          <td>${checkInHtml}</td>
+          <td>${checkOutHtml}</td>
+          <td style="font-weight:bold; color:#2563eb;">${hours}</td>
+          <td style="font-size:13px; color:#64748b;">${fullNote}</td>
+        `;
+        tb.appendChild(tr);
+      });
+    }
+
+    // 匯出 CSV (支援 UTF-8 BOM，Excel 直接開不亂碼)
+    function exportCsv() {
+      const filtered = getFilteredData();
+      if (filtered.length === 0) {
+        alert("目前篩選結果無資料，無法匯出！");
+        return;
+      }
+
+      const headers = [
+        "學校名稱", "姓名", "職稱", "組別", "身分證字號", "聯絡電話",
+        "飲食習慣", "去程", "回程", "備註欄", "簽到時間", "簽退時間", "時數", "備註"
+      ];
+
+      const csvRows = [];
+      csvRows.push(headers.join(","));
+
+      filtered.forEach(r => {
+        const row = [
+          `"${(r[0] || "").replace(/"/g, '""')}"`,
+          `"${(r[1] || "").replace(/"/g, '""')}"`,
+          `"${(r[2] || "").replace(/"/g, '""')}"`,
+          `"${(r[13] || "").replace(/"/g, '""')}"`,
+          `"${(r[3] || "").replace(/"/g, '""')}"`,
+          `"${(r[4] || "").replace(/"/g, '""')}"`,
+          `"${(r[5] || "").replace(/"/g, '""')}"`,
+          `"${(r[6] || "").replace(/"/g, '""')}"`,
+          `"${(r[7] || "").replace(/"/g, '""')}"`,
+          `"${(r[8] || "").replace(/"/g, '""')}"`,
+          `"${(r[9] || "").replace(/"/g, '""')}"`,
+          `"${(r[10] || "").replace(/"/g, '""')}"`,
+          `"${(r[11] || "").replace(/"/g, '""')}"`,
+          `"${(r[12] || "").replace(/"/g, '""')}"`
+        ];
+        csvRows.push(row.join(","));
+      });
+
+      const csvContent = "\uFEFF" + csvRows.join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      a.href = url;
+      a.download = `報到與簽退名冊_${dateStr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   </script>
 </body>

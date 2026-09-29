@@ -1,20 +1,43 @@
 /**
  * =========================================================================
- * 原資增能獎勵報到系統 - Google Apps Script (GAS) 後端核心
- * 試算表 ID: 1rrF5RzCDhMxfEnKyyq5-DU319b4umjr34EK8Y7FQjfk
+ * 原資增能獎勵報到系統 (click_fjuirc) - Google Apps Script (GAS) 後端核心
+ * 試算表 ID: 1up0RNU638zVvAtLQlmcW3zXDuNRl5aUxV1VVUcCSu5Y
+ * 工作表 GID: 292620472
  * 
- * 欄位結構 (共 7 欄)：
- * A (1): 編號
- * B (2): 組別
- * C (3): 身分證字號 (查詢比對鍵值)
- * D (4): 姓名
- * E (5): 獎勵項目
- * F (6): 報到時間 (簽到寫入目標)
- * G (7): 交通費核銷否
+ * 欄位結構 (共 14 欄)：
+ * A (1, idx 0):  學校名稱
+ * B (2, idx 1):  姓名
+ * C (3, idx 2):  職稱
+ * D (4, idx 3):  身分證字號 (查詢與掃描比對鍵值)
+ * E (5, idx 4):  聯絡電話
+ * F (6, idx 5):  飲食習慣
+ * G (7, idx 6):  去程
+ * H (8, idx 7):  回程
+ * I (9, idx 8):  備註欄
+ * J (10, idx 9): 簽到 (簽到時間寫入欄位)
+ * K (11, idx 10): 簽退 (簽退時間寫入欄位)
+ * L (12, idx 11): 時數
+ * M (13, idx 12): 備註
+ * N (14, idx 13): 組別
  * =========================================================================
  */
 
-const SPREADSHEET_ID = "1rrF5RzCDhMxfEnKyyq5-DU319b4umjr34EK8Y7FQjfk";
+const SPREADSHEET_ID = "1up0RNU638zVvAtLQlmcW3zXDuNRl5aUxV1VVUcCSu5Y";
+const TARGET_GID = 292620472;
+
+/**
+ * 取得目標工作表 (優先比對 GID，找不到則取第一張工作表)
+ */
+function getTargetSheet() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheets = ss.getSheets();
+  for (let i = 0; i < sheets.length; i++) {
+    if (sheets[i].getSheetId() === TARGET_GID) {
+      return sheets[i];
+    }
+  }
+  return sheets[0];
+}
 
 /**
  * 處理 POST 請求 (主要 API 進入點)
@@ -26,7 +49,7 @@ function doPost(e) {
     const action = request.action;
 
     if (action === "processScan") {
-      return jsonResponse(processScan(request.idNumber));
+      return jsonResponse(processScan(request.idNumber, request.scanType));
     } else if (action === "getAdminData") {
       return jsonResponse(getAdminData());
     }
@@ -46,13 +69,14 @@ function doGet(e) {
     if (action === "getAdminData") {
       return jsonResponse(getAdminData());
     } else if (action === "processScan") {
-      return jsonResponse(processScan(e.parameter.idNumber));
+      return jsonResponse(processScan(e.parameter.idNumber, e.parameter.scanType));
     }
 
     return jsonResponse({
       status: "online",
-      message: "原資增能獎勵報到系統 GAS API 正常運行中",
-      spreadsheetId: SPREADSHEET_ID
+      message: "原資報到系統 (click_fjuirc) GAS API 正常運行中",
+      spreadsheetId: SPREADSHEET_ID,
+      targetGid: TARGET_GID
     });
   } catch (err) {
     return jsonResponse({ success: false, error: err.toString() });
@@ -60,69 +84,118 @@ function doGet(e) {
 }
 
 /**
- * 執行報到掃描
- * @param {string} idNumber 身分證字號
+ * 時間日期格式化輔助函式
  */
-function processScan(idNumber) {
+function formatDateTime(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  }
+  return val.toString().trim();
+}
+
+/**
+ * 執行報到掃描 (支援 簽到 checkIn 與 簽退 checkOut)
+ * @param {string} idNumber 身分證字號
+ * @param {string} scanType 'checkIn' 或 'checkOut' (預設為 'checkIn')
+ */
+function processScan(idNumber, scanType) {
   if (!idNumber) {
     return { status: "not_found", message: "身分證字號不可為空" };
   }
 
+  const type = (scanType === "checkOut") ? "checkOut" : "checkIn";
   const cleanId = idNumber.toString().trim().toUpperCase();
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheets()[0];
+  const sheet = getTargetSheet();
   const data = sheet.getDataRange().getValues();
 
   // 第一列為表頭 (Row 0)，從第二列開始搜尋 (i = 1)
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    // C 欄為身分證字號 (Index 2)
-    const targetId = row[2] ? row[2].toString().trim().toUpperCase() : "";
+    // D 欄為身分證字號 (Index 3)
+    const targetId = row[3] ? row[3].toString().trim().toUpperCase() : "";
 
     if (targetId === cleanId) {
-      const idNo = row[0] ? row[0].toString() : "";         // A: 編號
-      const groupName = row[1] ? row[1].toString() : "";    // B: 組別
-      const name = row[3] ? row[3].toString() : "";         // D: 姓名
-      const reward = row[4] ? row[4].toString() : "";       // E: 獎勵項目
-      let checkInTime = row[5] ? row[5] : "";               // F: 報到時間
-      const isTravelPay = row[6] ? row[6].toString() : "";  // G: 交通費核銷否
+      const school = row[0] ? row[0].toString().trim() : "";      // A: 學校名稱
+      const name = row[1] ? row[1].toString().trim() : "";        // B: 姓名
+      const title = row[2] ? row[2].toString().trim() : "";       // C: 職稱
+      const phone = row[4] ? row[4].toString().trim() : "";       // E: 聯絡電話
+      const diet = row[5] ? row[5].toString().trim() : "";        // F: 飲食習慣
+      const depart = row[6] ? row[6].toString().trim() : "";      // G: 去程
+      const returnTrip = row[7] ? row[7].toString().trim() : "";  // H: 回程
+      const note1 = row[8] ? row[8].toString().trim() : "";       // I: 備註欄
+      let checkInTime = formatDateTime(row[9]);                   // J: 簽到 (Col 10)
+      let checkOutTime = formatDateTime(row[10]);                 // K: 簽退 (Col 11)
+      const hours = row[11] ? row[11].toString().trim() : "";     // L: 時數
+      const note2 = row[12] ? row[12].toString().trim() : "";     // M: 備註
+      const groupName = row[13] ? row[13].toString().trim() : ""; // N: 組別
 
-      // 日期格式化處理
-      if (checkInTime instanceof Date) {
-        checkInTime = Utilities.formatDate(checkInTime, "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
-      } else {
-        checkInTime = checkInTime ? checkInTime.toString().trim() : "";
-      }
+      const nowStr = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
 
-      // 如果已經有報到時間，代表重複掃描
-      if (checkInTime !== "") {
+      if (type === "checkIn") {
+        // 簽到處理
+        if (checkInTime !== "") {
+          return {
+            status: "already",
+            scanType: "checkIn",
+            name: name,
+            school: school,
+            title: title,
+            groupName: groupName,
+            checkInTime: checkInTime,
+            checkOutTime: checkOutTime,
+            hours: hours
+          };
+        }
+
+        // 首次簽到：寫入 J 欄 (第 10 欄，列號為 i + 1)
+        sheet.getRange(i + 1, 10).setValue(nowStr);
+        SpreadsheetApp.flush();
+
         return {
-          status: "already",
-          idNo: idNo,
+          status: "success",
+          scanType: "checkIn",
           name: name,
+          school: school,
+          title: title,
           groupName: groupName,
-          reward: reward,
-          isTravelPay: isTravelPay,
-          checkInTime: checkInTime
+          checkInTime: nowStr,
+          checkOutTime: checkOutTime,
+          hours: hours
+        };
+
+      } else {
+        // 簽退處理 (checkOut)
+        if (checkOutTime !== "") {
+          return {
+            status: "already",
+            scanType: "checkOut",
+            name: name,
+            school: school,
+            title: title,
+            groupName: groupName,
+            checkInTime: checkInTime,
+            checkOutTime: checkOutTime,
+            hours: hours
+          };
+        }
+
+        // 首次簽退：寫入 K 欄 (第 11 欄，列號為 i + 1)
+        sheet.getRange(i + 1, 11).setValue(nowStr);
+        SpreadsheetApp.flush();
+
+        return {
+          status: "success",
+          scanType: "checkOut",
+          name: name,
+          school: school,
+          title: title,
+          groupName: groupName,
+          checkInTime: checkInTime,
+          checkOutTime: nowStr,
+          hours: hours
         };
       }
-
-      // 首次報到：產生當前台灣時區時間
-      const nowStr = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
-      
-      // 寫入 F 欄 (第 6 欄，列號為 i + 1)
-      sheet.getRange(i + 1, 6).setValue(nowStr);
-      SpreadsheetApp.flush();
-
-      return {
-        status: "success",
-        idNo: idNo,
-        name: name,
-        groupName: groupName,
-        reward: reward,
-        isTravelPay: isTravelPay,
-        checkInTime: nowStr
-      };
     }
   }
 
@@ -135,8 +208,7 @@ function processScan(idNumber) {
  */
 function getAdminData() {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheets()[0];
+    const sheet = getTargetSheet();
     const rawData = sheet.getDataRange().getValues();
 
     if (rawData.length <= 1) {
@@ -147,24 +219,24 @@ function getAdminData() {
     // 從第 2 列開始 (排除標題列)
     for (let i = 1; i < rawData.length; i++) {
       const r = rawData[i];
-      // 忽略全空列
-      if (!r[0] && !r[2] && !r[3]) continue;
-
-      let checkInTimeStr = "";
-      if (r[5] instanceof Date) {
-        checkInTimeStr = Utilities.formatDate(r[5], "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
-      } else if (r[5]) {
-        checkInTimeStr = r[5].toString().trim();
-      }
+      // 忽略全空列 (判斷姓名與身分證皆空則略過)
+      if (!r[1] && !r[3]) continue;
 
       dataList.push([
-        r[0] ? r[0].toString() : "",               // 0: 編號
-        r[1] ? r[1].toString() : "",               // 1: 組別
-        r[2] ? r[2].toString().toUpperCase() : "", // 2: 身分證字號
-        r[3] ? r[3].toString() : "",               // 3: 姓名
-        r[4] ? r[4].toString() : "",               // 4: 獎勵項目
-        checkInTimeStr,                            // 5: 報到時間
-        r[6] ? r[6].toString() : ""                // 6: 交通費核銷否
+        r[0] ? r[0].toString().trim() : "",               // 0: 學校名稱
+        r[1] ? r[1].toString().trim() : "",               // 1: 姓名
+        r[2] ? r[2].toString().trim() : "",               // 2: 職稱
+        r[3] ? r[3].toString().toUpperCase().trim() : "", // 3: 身分證字號
+        r[4] ? r[4].toString().trim() : "",               // 4: 聯絡電話
+        r[5] ? r[5].toString().trim() : "",               // 5: 飲食習慣
+        r[6] ? r[6].toString().trim() : "",               // 6: 去程
+        r[7] ? r[7].toString().trim() : "",               // 7: 回程
+        r[8] ? r[8].toString().trim() : "",               // 8: 備註欄
+        formatDateTime(r[9]),                             // 9: 簽到
+        formatDateTime(r[10]),                            // 10: 簽退
+        r[11] ? r[11].toString().trim() : "",             // 11: 時數
+        r[12] ? r[12].toString().trim() : "",             // 12: 備註
+        r[13] ? r[13].toString().trim() : ""              // 13: 組別
       ]);
     }
 

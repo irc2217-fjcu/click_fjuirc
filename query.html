@@ -361,9 +361,8 @@
 
   <script>
     const STORAGE_KEY = "CLICK_FJUIRC_GAS_URL";
-    const OLD_STORAGE_KEY = "CIP_GAS_URL";
-    const DEFAULT_GAS_URL = "";
-    let API_URL = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(OLD_STORAGE_KEY) || DEFAULT_GAS_URL;
+    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbxgVwMuBcewC-qqPR46oXOF0HLc-vLd4tQlRmLs10449ofHQoVfoGwuX4tN4FiECb04/exec";
+    let API_URL = localStorage.getItem(STORAGE_KEY) || DEFAULT_GAS_URL;
 
     let db = [];
     let isMasked = true; // 身分證隱碼狀態

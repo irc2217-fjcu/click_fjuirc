@@ -4,6 +4,7 @@
 
 - **線上系統網址**：[https://irc2217-fjcu.github.io/click_fjuirc/](https://irc2217-fjcu.github.io/click_fjuirc/)
 - **後端試算表**：[前往 Google 試算表](https://docs.google.com/spreadsheets/d/1up0RNU638zVvAtLQlmcW3zXDuNRl5aUxV1VVUcCSu5Y/edit?gid=292620472#gid=292620472)
+- **GAS API 網址**：`https://script.google.com/macros/s/AKfycbxgVwMuBcewC-qqPR46oXOF0HLc-vLd4tQlRmLs10449ofHQoVfoGwuX4tN4FiECb04/exec`
 
 ---
 

@@ -49,62 +49,7 @@
       z-index: -1;
     }
 
-    #apiSettingBanner {
-      background: rgba(30, 41, 59, 0.95);
-      color: #fff;
-      padding: 9px 16px;
-      font-size: 13px;
-      text-align: center;
-      width: 100%;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      z-index: 100;
-    }
-    #apiSettingBanner button {
-      background: #3b82f6;
-      color: #fff;
-      border: none;
-      padding: 3px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      cursor: pointer;
-      margin-left: 8px;
-      font-weight: bold;
-    }
-    
-    .nav-bar { 
-      display: flex; 
-      gap: 12px; 
-      width: 95%; 
-      max-width: 800px; 
-      margin-top: 25px; 
-      z-index: 10; 
-      flex-shrink: 0;
-    }
-    .nav-btn { 
-      flex: 1; 
-      padding: 14px 10px; 
-      background: rgba(240, 240, 240, 0.88); 
-      backdrop-filter: blur(5px);
-      color: #444444; 
-      border: 2px solid #dddddd; 
-      border-radius: 16px; 
-      text-decoration: none; 
-      text-align: center; 
-      font-weight: bold; 
-      font-size: 17px; 
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    }
-    .nav-btn:hover {
-      background: #e5e5e5;
-      color: #222222;
-    }
-    .nav-btn.active { 
-      background: #1e293b; 
-      color: #ffffff;      
-      border-color: #1e293b;
-      box-shadow: 0 6px 20px rgba(30, 41, 59, 0.35);
-    }
+
 
     .card { 
       background: rgba(255, 255, 255, 0.95); 
@@ -277,17 +222,7 @@
 </head>
 <body>
 
-  <!-- API 連線設定頂部條 -->
-  <div id="apiSettingBanner">
-    🔗 系統連線狀態：<span id="apiStatusText">尚未設定 GAS API 網址</span>
-    <button onclick="promptApiUrl()">[點此設定 API 網址]</button>
-  </div>
 
-  <div class="nav-bar">
-    <a href="index.html" class="nav-btn">報到與簽退</a>
-    <a href="temp.html" class="nav-btn active">現場臨時報到</a>
-    <a href="query.html" class="nav-btn">查詢看板</a>
-  </div>
 
   <div class="card">
     <div class="form-header">
@@ -393,12 +328,9 @@
       <p id="modalMsg" style="font-size: 16px; color: #334155; line-height: 1.6;"></p>
       
       <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: center;">
-        <button onclick="closeModalAndReset()" style="padding: 12px 24px; background: #d97706; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 15px;">
+        <button onclick="closeModalAndReset()" style="padding: 14px 28px; background: #d97706; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px;">
           ➕ 繼續辦理下一位
         </button>
-        <a href="query.html" style="padding: 12px 20px; background: #e2e8f0; color: #334155; border-radius: 12px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; font-size: 15px;">
-          📊 查看看板
-        </a>
       </div>
     </div>
   </div>
@@ -410,27 +342,6 @@
 
     let html5QrCode = null;
     let isCameraRunning = false;
-
-    function promptApiUrl() {
-      const input = prompt("請貼上您的 Google Apps Script Web App URL：", API_URL);
-      if (input !== null) {
-        API_URL = input.trim();
-        localStorage.setItem(STORAGE_KEY, API_URL);
-        updateApiStatus();
-      }
-    }
-
-    function updateApiStatus() {
-      const statusText = document.getElementById("apiStatusText");
-      if (API_URL && API_URL.startsWith("http")) {
-        statusText.textContent = "已連線正式 API (Google 試算表)";
-        statusText.style.color = "#a7f3d0";
-      } else {
-        statusText.textContent = "尚未設定 GAS API 網址";
-        statusText.style.color = "#fde047";
-      }
-    }
-    updateApiStatus();
 
     // =========================================================================
     // 相機條碼輔助掃描 (Code 39 / QR)

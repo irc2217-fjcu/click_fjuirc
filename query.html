@@ -285,30 +285,13 @@
 
     <!-- 篩選列與操作工具列 -->
     <div class="filter-wrapper">
-      <input type="text" id="searchKeyword" class="filter-input" oninput="draw()" placeholder="🔍 搜尋學校、姓名、身分證、電話、職稱、組別或備註...">
+      <input type="text" id="searchKeyword" class="filter-input" oninput="draw()" placeholder="🔍 搜尋姓名、身分證、學校、電話、職稱、組別或備註...">
       
       <!-- 簽到狀態篩選 -->
       <select id="fCheckIn" class="filter-select" onchange="draw()">
         <option value="all">簽到狀態 (全部)</option>
         <option value="in">已簽到</option>
         <option value="not">未簽到</option>
-      </select>
-
-      <!-- 簽退狀態篩選 -->
-      <select id="fCheckOut" class="filter-select" onchange="draw()">
-        <option value="all">簽退狀態 (全部)</option>
-        <option value="out">已簽退</option>
-        <option value="not">未簽退</option>
-      </select>
-      
-      <!-- 學校篩選 -->
-      <select id="fSchool" class="filter-select" onchange="draw()">
-        <option value="all">學校名稱 (全部)</option>
-      </select>
-
-      <!-- 組別篩選 -->
-      <select id="fGroup" class="filter-select" onchange="draw()">
-        <option value="all">組別 (全部)</option>
       </select>
 
       <!-- 飲食習慣篩選 -->
@@ -427,20 +410,12 @@
       }
     }
 
-    // 動態填入學校、組別、飲食下拉選單選項
+    // 動態填入飲食下拉選單選項
     function populateFilters() {
-      const schools = new Set();
-      const groups = new Set();
       const diets = new Set();
-
       db.forEach(r => {
-        if (r[0]) schools.add(r[0]);   // 學校
-        if (r[13]) groups.add(r[13]); // 組別
-        if (r[5]) diets.add(r[5]);    // 飲食習慣
+        if (r[5]) diets.add(r[5]); // 飲食習慣
       });
-
-      populateSelect("fSchool", schools, "學校名稱 (全部)");
-      populateSelect("fGroup", groups, "組別 (全部)");
       populateSelect("fDiet", diets, "飲食習慣 (全部)");
     }
 
@@ -463,9 +438,6 @@
     function getFilteredData() {
       const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
       const checkInFilter = document.getElementById("fCheckIn").value;
-      const checkOutFilter = document.getElementById("fCheckOut").value;
-      const schoolFilter = document.getElementById("fSchool").value;
-      const groupFilter = document.getElementById("fGroup").value;
       const dietFilter = document.getElementById("fDiet").value;
 
       return db.filter(r => {
@@ -478,7 +450,6 @@
         const diet = r[5] || "";
         const note1 = r[8] || "";
         const checkIn = r[9] || "";
-        const checkOut = r[10] || "";
         const note2 = r[12] || "";
         const group = r[13] || "";
 
@@ -498,16 +469,6 @@
         // 簽到狀態篩選
         if (checkInFilter === "in" && !checkIn) return false;
         if (checkInFilter === "not" && checkIn) return false;
-
-        // 簽退狀態篩選
-        if (checkOutFilter === "out" && !checkOut) return false;
-        if (checkOutFilter === "not" && checkOut) return false;
-
-        // 學校篩選
-        if (schoolFilter !== "all" && school !== schoolFilter) return false;
-
-        // 組別篩選
-        if (groupFilter !== "all" && group !== groupFilter) return false;
 
         // 飲食篩選
         if (dietFilter !== "all" && diet !== dietFilter) return false;

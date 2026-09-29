@@ -24,22 +24,6 @@
       background-color: #f8fafc;
     }
     
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-image: url('https://irc.fju.edu.tw/resources/20260601125036407.jpg'); 
-      background-size: 100% auto; 
-      background-position: center;
-      background-repeat: no-repeat;
-      filter: blur(6px); 
-      opacity: 0.22;     
-      z-index: -1;
-    }
-    
     .nav-bar { 
       display: flex; 
       gap: 12px; 
@@ -52,9 +36,7 @@
     .nav-btn { 
       flex: 1; 
       padding: 14px 10px; 
-      background: rgba(240, 240, 240, 0.88); 
-      backdrop-filter: blur(5px);
-      -webkit-backdrop-filter: blur(5px);
+      background: #f1f5f9; 
       color: #444444; 
       border: 2px solid #dddddd; 
       border-radius: 16px; 
@@ -66,7 +48,7 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     }
     .nav-btn:hover {
-      background: #e5e5e5;
+      background: #e2e8f0;
       color: #222222;
     }
     .nav-btn.active { 
@@ -77,12 +59,10 @@
     }
 
     .card { 
-      background: rgba(255, 255, 255, 0.95); 
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      background: #ffffff; 
       padding: 30px 22px; 
       border-radius: 32px; 
-      box-shadow: 0 20px 45px rgba(0,0,0,0.1), 0 6px 16px rgba(0,0,0,0.04); 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04); 
       width: 95%; 
       max-width: 1200px; 
       text-align: center; 

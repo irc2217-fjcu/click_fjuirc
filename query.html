@@ -265,7 +265,7 @@
 
     <!-- 篩選列與操作工具列 -->
     <div class="filter-wrapper">
-      <input type="text" id="searchKeyword" class="filter-input" oninput="draw()" placeholder="🔍 搜尋姓名、身分證、學校、電話、職稱、組別或備註...">
+      <input type="text" id="searchKeyword" class="filter-input" oninput="draw()" placeholder="🔍 搜尋姓名、身分證、學校、電話、職稱或備註...">
       
       <!-- 簽到狀態篩選 -->
       <select id="fCheckIn" class="filter-select" onchange="draw()">
@@ -310,7 +310,6 @@
             <th>學校名稱</th>
             <th>姓名</th>
             <th>職稱</th>
-            <th>組別</th>
             <th>聯絡電話</th>
             <th>飲食習慣</th>
             <th>去程</th>
@@ -487,7 +486,7 @@
       tb.innerHTML = "";
 
       if (filtered.length === 0) {
-        tb.innerHTML = `<tr><td colspan="13" style="text-align: center; color: #94a3b8; padding: 35px;">⚠️ 無符合條件的學員資料</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="12" style="text-align: center; color: #94a3b8; padding: 35px;">⚠️ 無符合條件的學員資料</td></tr>`;
         return;
       }
 
@@ -531,7 +530,6 @@
           <td><strong>${school}</strong></td>
           <td><strong>${name}</strong></td>
           <td>${title}</td>
-          <td><span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:6px; font-weight:600; font-size:12px;">${group}</span></td>
           <td>${phone}</td>
           <td>${dietHtml}</td>
           <td>${depart}</td>

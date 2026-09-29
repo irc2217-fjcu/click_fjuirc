@@ -285,18 +285,6 @@
           </select>
         </div>
 
-        <!-- 組別 -->
-        <div class="form-group">
-          <label class="form-label" for="tGroup">組別</label>
-          <input type="text" id="tGroup" class="form-control" value="臨時組" placeholder="例如：第一組 或 臨時組">
-        </div>
-
-        <!-- 時數 -->
-        <div class="form-group">
-          <label class="form-label" for="tHours">研習時數</label>
-          <input type="text" id="tHours" class="form-control" placeholder="例如：3 或 6">
-        </div>
-
         <!-- 去程 / 回程 -->
         <div class="form-group">
           <label class="form-label" for="tDepart">去程交通</label>
@@ -410,8 +398,6 @@
       const title = document.getElementById('tTitle').value.trim();
       const phone = document.getElementById('tPhone').value.trim();
       const diet = document.getElementById('tDiet').value;
-      const group = document.getElementById('tGroup').value.trim() || "臨時組";
-      const hours = document.getElementById('tHours').value.trim();
       const depart = document.getElementById('tDepart').value.trim();
       const returnTrip = document.getElementById('tReturn').value.trim();
       const note = document.getElementById('tNote').value.trim();
@@ -433,8 +419,8 @@
         title: title,
         phone: phone,
         diet: diet,
-        groupName: group,
-        hours: hours,
+        groupName: "臨時組",
+        hours: "",
         depart: depart,
         returnTrip: returnTrip,
         note1: note,
@@ -474,7 +460,6 @@
     function closeModalAndReset() {
       document.getElementById('successModal').style.display = "none";
       document.getElementById('tempForm').reset();
-      document.getElementById('tGroup').value = "臨時組";
       document.getElementById('tName').focus();
     }
   </script>

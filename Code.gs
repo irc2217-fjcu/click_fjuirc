@@ -52,6 +52,8 @@ function doPost(e) {
       return jsonResponse(processScan(request.idNumber, request.scanType));
     } else if (action === "getAdminData") {
       return jsonResponse(getAdminData());
+    } else if (action === "addTempUser") {
+      return jsonResponse(addTempUser(request.data));
     }
 
     return jsonResponse({ success: false, error: "未知的請求動作 (Unknown action)" });
@@ -201,6 +203,95 @@ function processScan(idNumber, scanType) {
 
   // 找不到該身分證
   return { status: "not_found" };
+}
+
+/**
+ * 新增現場臨時報到 (自動完成即時簽到)
+ */
+function addTempUser(data) {
+  if (!data || !data.idNumber || !data.name) {
+    return { success: false, message: "「姓名」與「身分證字號」為必填欄位！" };
+  }
+
+  const cleanId = data.idNumber.toString().trim().toUpperCase();
+  const sheet = getTargetSheet();
+  const values = sheet.getDataRange().getValues();
+
+  // 檢查是否已有名單存在此身分證
+  for (let i = 1; i < values.length; i++) {
+    const rowId = values[i][3] ? values[i][3].toString().trim().toUpperCase() : "";
+    if (rowId === cleanId) {
+      const existingName = values[i][1] ? values[i][1].toString().trim() : "";
+      let checkInTime = formatDateTime(values[i][9]);
+      if (checkInTime) {
+        return {
+          success: false,
+          status: "already_checked_in",
+          message: `此身分證已在名冊中（${existingName}），且已於 ${checkInTime} 完成簽到！`
+        };
+      } else {
+        // 在名冊中但尚未簽到：直接為其補簽到
+        const nowStr = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+        sheet.getRange(i + 1, 10).setValue(nowStr);
+        SpreadsheetApp.flush();
+        return {
+          success: true,
+          status: "existing_checked_in",
+          message: `此身分證已在名冊中（${existingName}），已直接為其完成簽到！`,
+          name: existingName,
+          checkInTime: nowStr
+        };
+      }
+    }
+  }
+
+  // 首次臨時報到：新增一列
+  const nowStr = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const school = (data.school || "").toString().trim();
+  const name = (data.name || "").toString().trim();
+  const title = (data.title || "").toString().trim();
+  const phone = (data.phone || "").toString().trim();
+  const diet = (data.diet || "").toString().trim();
+  const depart = (data.depart || "").toString().trim();
+  const returnTrip = (data.returnTrip || "").toString().trim();
+  const note1 = (data.note1 || "").toString().trim();
+  const checkIn = nowStr;
+  const checkOut = "";
+  const hours = (data.hours || "").toString().trim();
+  let note2 = (data.note2 || "").toString().trim();
+  note2 = note2 ? `[現場臨時報到] ${note2}` : "[現場臨時報到]";
+  const groupName = (data.groupName || "臨時組").toString().trim();
+
+  // 寫入 14 欄
+  const newRow = [
+    school,      // A (1): 學校名稱
+    name,        // B (2): 姓名
+    title,       // C (3): 職稱
+    cleanId,     // D (4): 身分證字號
+    phone,       // E (5): 聯絡電話
+    diet,        // F (6): 飲食習慣
+    depart,      // G (7): 去程
+    returnTrip,  // H (8): 回程
+    note1,       // I (9): 備註欄
+    checkIn,     // J (10): 簽到
+    checkOut,    // K (11): 簽退
+    hours,       // L (12): 時數
+    note2,       // M (13): 備註
+    groupName    // N (14): 組別
+  ];
+
+  sheet.appendRow(newRow);
+  SpreadsheetApp.flush();
+
+  return {
+    success: true,
+    status: "created",
+    message: "現場臨時報到成功，並已完成即時簽到！",
+    name: name,
+    school: school,
+    groupName: groupName,
+    checkInTime: nowStr
+  };
 }
 
 /**

@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>現場臨時報到 - 原資增能獎勵報到系統</title>
+  
+  <!-- 引入 HTML5 相機條碼辨識引擎 (支援掃描身分證條碼快速代入) -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #d97706;
+      --primary-hover: #b45309;
+      --bg-dark: #1e293b;
+    }
+
+    * { 
+      box-sizing: border-box; 
+      -webkit-font-smoothing: antialiased; 
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    body, html { 
+      margin: 0; 
+      padding: 0; 
+      min-height: 100vh; 
+      font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      overflow-x: hidden;
+      background-color: #f8fafc;
+    }
+    
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url('https://irc.fju.edu.tw/resources/20260601125036407.jpg'); 
+      background-size: 100% auto; 
+      background-position: center;
+      background-repeat: no-repeat;
+      filter: blur(6px); 
+      opacity: 0.22;     
+      z-index: -1;
+    }
+
+    #apiSettingBanner {
+      background: rgba(30, 41, 59, 0.95);
+      color: #fff;
+      padding: 9px 16px;
+      font-size: 13px;
+      text-align: center;
+      width: 100%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      z-index: 100;
+    }
+    #apiSettingBanner button {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-left: 8px;
+      font-weight: bold;
+    }
+    
+    .nav-bar { 
+      display: flex; 
+      gap: 12px; 
+      width: 95%; 
+      max-width: 800px; 
+      margin-top: 25px; 
+      z-index: 10; 
+      flex-shrink: 0;
+    }
+    .nav-btn { 
+      flex: 1; 
+      padding: 14px 10px; 
+      background: rgba(240, 240, 240, 0.88); 
+      backdrop-filter: blur(5px);
+      color: #444444; 
+      border: 2px solid #dddddd; 
+      border-radius: 16px; 
+      text-decoration: none; 
+      text-align: center; 
+      font-weight: bold; 
+      font-size: 17px; 
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .nav-btn:hover {
+      background: #e5e5e5;
+      color: #222222;
+    }
+    .nav-btn.active { 
+      background: #1e293b; 
+      color: #ffffff;      
+      border-color: #1e293b;
+      box-shadow: 0 6px 20px rgba(30, 41, 59, 0.35);
+    }
+
+    .card { 
+      background: rgba(255, 255, 255, 0.95); 
+      backdrop-filter: blur(10px);
+      padding: 32px 26px; 
+      border-radius: 32px; 
+      box-shadow: 0 20px 45px rgba(0,0,0,0.1), 0 6px 16px rgba(0,0,0,0.04); 
+      width: 95%; 
+      max-width: 800px; 
+      margin: 20px 0 50px 0;
+      border: 1px solid rgba(0, 0, 0, 0.08); 
+    }
+
+    .form-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .form-header h2 {
+      color: #1e293b;
+      font-size: 26px;
+      margin: 0 0 6px 0;
+    }
+    .form-header p {
+      color: #64748b;
+      font-size: 14px;
+      margin: 0;
+    }
+
+    /* 條碼輔助掃描卡片 */
+    .barcode-quick-card {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .barcode-quick-text {
+      font-size: 14px;
+      color: #92400e;
+      font-weight: 600;
+    }
+    .btn-camera-scan {
+      padding: 8px 16px;
+      background: #d97706;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-camera-scan:hover { background: #b45309; }
+
+    #cameraWrapper {
+      display: none;
+      width: 100%;
+      max-width: 400px;
+      margin: 12px auto;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid #d97706;
+    }
+
+    /* 表單格線 */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px 20px;
+      text-align: left;
+    }
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+    .form-label {
+      font-size: 14px;
+      font-weight: bold;
+      color: #334155;
+    }
+    .form-label .req {
+      color: #dc2626;
+      margin-left: 2px;
+    }
+
+    .form-control {
+      padding: 12px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
+      transition: all 0.2s;
+      background: #ffffff;
+      color: #1e293b;
+    }
+    .form-control:focus {
+      border-color: #d97706;
+      box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
+    }
+
+    .btn-submit-temp {
+      width: 100%;
+      padding: 18px;
+      background: #d97706;
+      color: white;
+      border: none;
+      border-radius: 16px;
+      font-weight: bold;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 6px 18px rgba(217, 119, 6, 0.3);
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-submit-temp:hover {
+      background: #b45309;
+      transform: translateY(-2px);
+    }
+    .btn-submit-temp:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* 成功視窗 */
+    #successModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(5px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-box {
+      background: #ffffff;
+      padding: 32px 24px;
+      border-radius: 28px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+      animation: popIn 0.3s ease;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- API 連線設定頂部條 -->
+  <div id="apiSettingBanner">
+    🔗 系統連線狀態：<span id="apiStatusText">尚未設定 GAS API 網址</span>
+    <button onclick="promptApiUrl()">[點此設定 API 網址]</button>
+  </div>
+
+  <div class="nav-bar">
+    <a href="index.html" class="nav-btn">報到與簽退</a>
+    <a href="temp.html" class="nav-btn active">現場臨時報到</a>
+    <a href="query.html" class="nav-btn">查詢看板</a>
+  </div>
+
+  <div class="card">
+    <div class="form-header">
+      <h2>📝 現場臨時報到</h2>
+      <p>現場加簽或名單外人員填寫此表，送出後系統將自動新增至試算表並完成簽到</p>
+    </div>
+
+    <!-- 掃描相機輔助區 -->
+    <div class="barcode-quick-card">
+      <div class="barcode-quick-text">📷 可開啟相機掃描參加者身分證條碼，自動帶入證號</div>
+      <button type="button" id="btnScanId" class="btn-camera-scan" onclick="toggleCamera()">
+        📷 掃描身分證
+      </button>
+      <div id="cameraWrapper">
+        <div id="reader"></div>
+      </div>
+    </div>
+
+    <form id="tempForm" onsubmit="handleTempSubmit(event)">
+      <div class="form-grid">
+        <!-- 姓名 -->
+        <div class="form-group">
+          <label class="form-label" for="tName">姓名<span class="req">*</span></label>
+          <input type="text" id="tName" class="form-control" placeholder="請輸入真實姓名" required autocomplete="off">
+        </div>
+
+        <!-- 身分證字號 -->
+        <div class="form-group">
+          <label class="form-label" for="tIdNumber">身分證字號<span class="req">*</span></label>
+          <input type="text" id="tIdNumber" class="form-control" placeholder="身分證字號 (例如：A123456789)" required autocomplete="off" style="text-transform: uppercase;">
+        </div>
+
+        <!-- 學校名稱 -->
+        <div class="form-group">
+          <label class="form-label" for="tSchool">學校名稱</label>
+          <input type="text" id="tSchool" class="form-control" placeholder="例如：輔仁大學" autocomplete="off">
+        </div>
+
+        <!-- 職稱 -->
+        <div class="form-group">
+          <label class="form-label" for="tTitle">職稱</label>
+          <input type="text" id="tTitle" class="form-control" placeholder="例如：專任助理 / 學生" autocomplete="off">
+        </div>
+
+        <!-- 聯絡電話 -->
+        <div class="form-group">
+          <label class="form-label" for="tPhone">聯絡電話</label>
+          <input type="tel" id="tPhone" class="form-control" placeholder="手機或分機" autocomplete="off">
+        </div>
+
+        <!-- 飲食習慣 -->
+        <div class="form-group">
+          <label class="form-label" for="tDiet">飲食習慣</label>
+          <select id="tDiet" class="form-control">
+            <option value="葷">葷食</option>
+            <option value="素">全素</option>
+            <option value="蛋奶素">蛋奶素</option>
+            <option value="不供餐/自理">不供餐 / 自理</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+
+        <!-- 組別 -->
+        <div class="form-group">
+          <label class="form-label" for="tGroup">組別</label>
+          <input type="text" id="tGroup" class="form-control" value="臨時組" placeholder="例如：第一組 或 臨時組">
+        </div>
+
+        <!-- 時數 -->
+        <div class="form-group">
+          <label class="form-label" for="tHours">研習時數</label>
+          <input type="text" id="tHours" class="form-control" placeholder="例如：3 或 6">
+        </div>
+
+        <!-- 去程 / 回程 -->
+        <div class="form-group">
+          <label class="form-label" for="tDepart">去程交通</label>
+          <input type="text" id="tDepart" class="form-control" placeholder="例如：自行前往 / 接駁車">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="tReturn">回程交通</label>
+          <input type="text" id="tReturn" class="form-control" placeholder="例如：自行返程 / 接駁車">
+        </div>
+
+        <!-- 備註 -->
+        <div class="form-group full">
+          <label class="form-label" for="tNote">備註欄</label>
+          <input type="text" id="tNote" class="form-control" placeholder="例如：現場加簽 / 替代人員">
+        </div>
+      </div>
+
+      <button type="submit" id="btnSubmit" class="btn-submit-temp">
+        <span id="btnSubmitText">📝 送出並立即完成簽到</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- 成功回饋視窗 -->
+  <div id="successModal">
+    <div class="modal-box">
+      <div style="font-size: 60px; margin-bottom: 10px;">🎉</div>
+      <h2 id="modalTitle" style="color: #15803d; margin: 0 0 10px 0; font-size: 26px;">臨時報到成功！</h2>
+      <p id="modalMsg" style="font-size: 16px; color: #334155; line-height: 1.6;"></p>
+      
+      <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: center;">
+        <button onclick="closeModalAndReset()" style="padding: 12px 24px; background: #d97706; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 15px;">
+          ➕ 繼續辦理下一位
+        </button>
+        <a href="query.html" style="padding: 12px 20px; background: #e2e8f0; color: #334155; border-radius: 12px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; font-size: 15px;">
+          📊 查看看板
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "CLICK_FJUIRC_GAS_URL";
+    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbxgVwMuBcewC-qqPR46oXOF0HLc-vLd4tQlRmLs10449ofHQoVfoGwuX4tN4FiECb04/exec";
+    let API_URL = localStorage.getItem(STORAGE_KEY) || DEFAULT_GAS_URL;
+
+    let html5QrCode = null;
+    let isCameraRunning = false;
+
+    function promptApiUrl() {
+      const input = prompt("請貼上您的 Google Apps Script Web App URL：", API_URL);
+      if (input !== null) {
+        API_URL = input.trim();
+        localStorage.setItem(STORAGE_KEY, API_URL);
+        updateApiStatus();
+      }
+    }
+
+    function updateApiStatus() {
+      const statusText = document.getElementById("apiStatusText");
+      if (API_URL && API_URL.startsWith("http")) {
+        statusText.textContent = "已連線正式 API (Google 試算表)";
+        statusText.style.color = "#a7f3d0";
+      } else {
+        statusText.textContent = "尚未設定 GAS API 網址";
+        statusText.style.color = "#fde047";
+      }
+    }
+    updateApiStatus();
+
+    // =========================================================================
+    // 相機條碼輔助掃描 (Code 39 / QR)
+    // =========================================================================
+    async function toggleCamera() {
+      const btn = document.getElementById("btnScanId");
+      const wrapper = document.getElementById("cameraWrapper");
+      
+      if (isCameraRunning) {
+        if (html5QrCode) {
+          try { await html5QrCode.stop(); } catch(e){}
+        }
+        isCameraRunning = false;
+        btn.innerHTML = "📷 掃描身分證";
+        wrapper.style.display = "none";
+      } else {
+        wrapper.style.display = "block";
+        btn.innerHTML = "⏹️ 關閉相機";
+        startCamera();
+      }
+    }
+
+    async function startCamera() {
+      const btn = document.getElementById("btnScanId");
+      try {
+        if (!html5QrCode) {
+          html5QrCode = new Html5Qrcode("reader");
+        }
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 15,
+            qrbox: { width: 300, height: 150 },
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.CODE_39,
+              Html5QrcodeSupportedFormats.CODE_128,
+              Html5QrcodeSupportedFormats.QR_CODE
+            ]
+          },
+          (decodedText) => {
+            let raw = decodedText.replace(/\*/g, '').trim().toUpperCase();
+            const match = raw.match(/[A-Z][0-9A-Z][0-9]{8}/);
+            const cleanId = match ? match[0] : raw;
+            document.getElementById('tIdNumber').value = cleanId;
+            toggleCamera();
+            document.getElementById('tName').focus();
+          },
+          () => {}
+        );
+        isCameraRunning = true;
+      } catch (err) {
+        alert("相機開啟失敗：" + err);
+        toggleCamera();
+      }
+    }
+
+    // =========================================================================
+    // 表單送出處理
+    // =========================================================================
+    async function handleTempSubmit(e) {
+      e.preventDefault();
+
+      const name = document.getElementById('tName').value.trim();
+      const idNo = document.getElementById('tIdNumber').value.trim().toUpperCase();
+      const school = document.getElementById('tSchool').value.trim();
+      const title = document.getElementById('tTitle').value.trim();
+      const phone = document.getElementById('tPhone').value.trim();
+      const diet = document.getElementById('tDiet').value;
+      const group = document.getElementById('tGroup').value.trim() || "臨時組";
+      const hours = document.getElementById('tHours').value.trim();
+      const depart = document.getElementById('tDepart').value.trim();
+      const returnTrip = document.getElementById('tReturn').value.trim();
+      const note = document.getElementById('tNote').value.trim();
+
+      if (!name || !idNo) {
+        alert("姓名與身分證字號為必填欄位！");
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmit');
+      const btnText = document.getElementById('btnSubmitText');
+      btn.disabled = true;
+      btnText.innerHTML = "⏳ 正在寫入試算表並簽到...";
+
+      const payload = {
+        name: name,
+        idNumber: idNo,
+        school: school,
+        title: title,
+        phone: phone,
+        diet: diet,
+        groupName: group,
+        hours: hours,
+        depart: depart,
+        returnTrip: returnTrip,
+        note1: note,
+        note2: "現場臨時報到"
+      };
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action: "addTempUser", data: payload })
+        });
+        const result = await res.json();
+        btn.disabled = false;
+        btnText.innerHTML = "📝 送出並立即完成簽到";
+
+        if (result.success) {
+          document.getElementById('modalTitle').innerText = "🎉 報到簽到成功！";
+          document.getElementById('modalTitle').style.color = "#15803d";
+          document.getElementById('modalMsg').innerHTML = `
+            <strong>學員：</strong>${result.name}<br>
+            <strong>所屬：</strong>${result.school || "現場臨時"}<br>
+            <strong>簽到時間：</strong>${result.checkInTime}<br>
+            <span style="font-size:13px; color:#16a34a; font-weight:bold; display:block; margin-top:8px;">${result.message}</span>
+          `;
+          document.getElementById('successModal').style.display = "flex";
+        } else {
+          alert("⚠️ 提示：" + result.message);
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btnText.innerHTML = "📝 送出並立即完成簽到";
+        alert("連線異常：" + err.toString());
+      }
+    }
+
+    function closeModalAndReset() {
+      document.getElementById('successModal').style.display = "none";
+      document.getElementById('tempForm').reset();
+      document.getElementById('tGroup').value = "臨時組";
+      document.getElementById('tName').focus();
+    }
+  </script>
+</body>
+</html>

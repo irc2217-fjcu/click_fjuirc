@@ -19,11 +19,15 @@
  * L (12, idx 11): 時數
  * M (13, idx 12): 備註
  * N (14, idx 13): 組別
+ * 
+ * 系統稽核：
+ * 自動維護「系統Log表」，完整記錄簽到、簽退、重複掃描與臨時報到之軌跡
  * =========================================================================
  */
 
 const SPREADSHEET_ID = "1up0RNU638zVvAtLQlmcW3zXDuNRl5aUxV1VVUcCSu5Y";
 const TARGET_GID = 292620472;
+const SHEET_LOG = "系統Log表";
 
 /**
  * 取得目標工作表 (優先比對 GID，找不到則取第一張工作表)
@@ -37,6 +41,41 @@ function getTargetSheet() {
     }
   }
   return sheets[0];
+}
+
+/**
+ * 寫入系統稽核 Log 表 (若工作表不存在自動建立)
+ */
+function writeLog(actionType, name, idNumber, school, groupName, details) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let logSheet = ss.getSheetByName(SHEET_LOG);
+    if (!logSheet) {
+      logSheet = ss.insertSheet(SHEET_LOG);
+      logSheet.appendRow([
+        "紀錄時間",
+        "動作類型",
+        "學員姓名",
+        "身分證字號",
+        "學校名稱",
+        "組別",
+        "詳細結果說明"
+      ]);
+      logSheet.setFrozenRows(1);
+    }
+    const nowStr = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+    logSheet.appendRow([
+      nowStr,
+      actionType || "",
+      name || "-",
+      idNumber || "-",
+      school || "-",
+      groupName || "-",
+      details || ""
+    ]);
+  } catch (err) {
+    console.warn("寫入 Log 異常: " + err.toString());
+  }
 }
 
 /**
@@ -76,7 +115,7 @@ function doGet(e) {
 
     return jsonResponse({
       status: "online",
-      message: "原資報到系統 (click_fjuirc) GAS API 正常運行中",
+      message: "原資報到系統 (click_fjuirc) GAS API 正常運行中 (已啟用 Log 稽核記錄)",
       spreadsheetId: SPREADSHEET_ID,
       targetGid: TARGET_GID
     });
@@ -97,7 +136,7 @@ function formatDateTime(val) {
 }
 
 /**
- * 執行報到掃描 (支援 簽到 checkIn 與 簽退 checkOut)
+ * 執行報到掃描 (支援 簽到 checkIn 與 簽退 checkOut，自動留存 Log)
  * @param {string} idNumber 身分證字號
  * @param {string} scanType 'checkIn' 或 'checkOut' (預設為 'checkIn')
  */
@@ -137,6 +176,7 @@ function processScan(idNumber, scanType) {
       if (type === "checkIn") {
         // 簽到處理
         if (checkInTime !== "") {
+          writeLog("重複簽到", name, cleanId, school, groupName, `此學員已於 ${checkInTime} 簽到過`);
           return {
             status: "already",
             scanType: "checkIn",
@@ -153,6 +193,7 @@ function processScan(idNumber, scanType) {
         // 首次簽到：寫入 J 欄 (第 10 欄，列號為 i + 1)
         sheet.getRange(i + 1, 10).setValue(nowStr);
         SpreadsheetApp.flush();
+        writeLog("簽到成功", name, cleanId, school, groupName, "完成大會簽到手續");
 
         return {
           status: "success",
@@ -169,6 +210,7 @@ function processScan(idNumber, scanType) {
       } else {
         // 簽退處理 (checkOut)
         if (checkOutTime !== "") {
+          writeLog("重複簽退", name, cleanId, school, groupName, `此學員已於 ${checkOutTime} 簽退過`);
           return {
             status: "already",
             scanType: "checkOut",
@@ -185,6 +227,7 @@ function processScan(idNumber, scanType) {
         // 首次簽退：寫入 K 欄 (第 11 欄，列號為 i + 1)
         sheet.getRange(i + 1, 11).setValue(nowStr);
         SpreadsheetApp.flush();
+        writeLog("簽退成功", name, cleanId, school, groupName, "完成大會簽退手續");
 
         return {
           status: "success",
@@ -202,11 +245,12 @@ function processScan(idNumber, scanType) {
   }
 
   // 找不到該身分證
+  writeLog("查無資料", "未知", cleanId, "-", "-", "名冊中查無此身分證字號");
   return { status: "not_found" };
 }
 
 /**
- * 新增現場臨時報到 (自動完成即時簽到)
+ * 新增現場臨時報到 (自動完成即時簽到，並留存 Log)
  */
 function addTempUser(data) {
   if (!data || !data.idNumber || !data.name) {
@@ -224,6 +268,7 @@ function addTempUser(data) {
       const existingName = values[i][1] ? values[i][1].toString().trim() : "";
       let checkInTime = formatDateTime(values[i][9]);
       if (checkInTime) {
+        writeLog("臨時報到(重複)", existingName, cleanId, "-", "-", `已在名冊中且已於 ${checkInTime} 簽到過`);
         return {
           success: false,
           status: "already_checked_in",
@@ -234,6 +279,7 @@ function addTempUser(data) {
         const nowStr = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
         sheet.getRange(i + 1, 10).setValue(nowStr);
         SpreadsheetApp.flush();
+        writeLog("臨時報到(補簽)", existingName, cleanId, "-", "-", "原在名冊中尚未簽到，現場加簽補完成簽到");
         return {
           success: true,
           status: "existing_checked_in",
@@ -282,6 +328,8 @@ function addTempUser(data) {
 
   sheet.appendRow(newRow);
   SpreadsheetApp.flush();
+
+  writeLog("現場臨時報到", name, cleanId, school, groupName, "現場新增名額並立即簽到");
 
   return {
     success: true,

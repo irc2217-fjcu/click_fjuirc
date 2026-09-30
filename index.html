@@ -336,10 +336,21 @@
         </button>
 
         <!-- 相機視訊視窗 -->
-        <div id="cameraWrapper" style="display: none;">
+        <div id="cameraWrapper" style="display: none; margin: 15px 0; border: 2px dashed #cbd5e1; border-radius: 16px; overflow: hidden; background: #000; position: relative;">
           <div id="reader"></div>
-          <div style="font-size: 13px; color: #fff; background: rgba(0,0,0,0.65); padding: 6px; position: absolute; bottom: 0; left: 0; right: 0;">
-            請對準身分證背面條碼 (Code 39) 或 QR Code
+          
+          <!-- 相機輔助工具列 (多鏡頭切換 / 補光燈) -->
+          <div id="cameraToolbar" style="display: flex; gap: 8px; justify-content: center; padding: 8px; background: #1e293b;">
+            <button id="btnSwitchCamera" onclick="switchCamera()" type="button" style="padding: 7px 12px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; display: none;">
+              🔄 切換鏡頭 (若模糊請點此)
+            </button>
+            <button id="btnTorch" onclick="toggleTorch()" type="button" style="padding: 7px 12px; background: #f59e0b; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; display: none;">
+              💡 補光燈
+            </button>
+          </div>
+
+          <div style="font-size: 12px; color: #fff; background: rgba(0,0,0,0.75); padding: 7px; text-align: center;">
+            🎯 請將身分證背面條碼對準紅框 (距離約 15-20 公分，避免反光)
           </div>
         </div>
 
@@ -463,6 +474,35 @@
       }
     }
 
+    let availableCameras = [];
+    let currentCameraIndex = 0;
+    let isTorchOn = false;
+
+    async function initCameras() {
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          availableCameras = devices;
+          // 優先選取後置鏡頭 (包含 back, rear, environment, 後置, 後鏡頭等)
+          const backIndex = availableCameras.findIndex(c => 
+            /back|rear|environment|後置|後鏡頭/i.test(c.label)
+          );
+          if (backIndex !== -1) {
+            currentCameraIndex = backIndex;
+          } else {
+            currentCameraIndex = 0;
+          }
+          // 若有多個鏡頭，顯示切換鏡頭按鈕
+          const btnSwitch = document.getElementById("btnSwitchCamera");
+          if (btnSwitch) {
+            btnSwitch.style.display = availableCameras.length > 1 ? "inline-block" : "none";
+          }
+        }
+      } catch (err) {
+        console.warn("取得相機清單失敗，將使用預設 environment:", err);
+      }
+    }
+
     async function startCamera() {
       const btn = document.getElementById("btnToggleCamera");
       try {
@@ -470,21 +510,43 @@
           html5QrCode = new Html5Qrcode("reader");
         }
 
+        if (availableCameras.length === 0) {
+          await initCameras();
+        }
+
         const config = {
-          fps: 15,
-          qrbox: { width: 320, height: 160 },
+          fps: 20,
+          qrbox: function(viewfinderWidth, viewfinderHeight) {
+            const w = Math.floor(viewfinderWidth * 0.88);
+            const h = Math.floor(Math.min(viewfinderHeight * 0.52, 180));
+            return { width: Math.max(w, 240), height: Math.max(h, 120) };
+          },
           formatsToSupport: [
             Html5QrcodeSupportedFormats.CODE_39,
             Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.QR_CODE
+            Html5QrcodeSupportedFormats.CODE_93,
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.UPC_A
           ],
           experimentalFeatures: {
             useBarCodeDetectorIfSupported: true
+          },
+          videoConstraints: {
+            facingMode: { ideal: "environment" },
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
           }
         };
 
+        // 優先嘗試使用目前鏡頭 deviceId，若無則使用 facingMode
+        let cameraArg = { facingMode: "environment" };
+        if (availableCameras.length > 0 && availableCameras[currentCameraIndex]) {
+          cameraArg = availableCameras[currentCameraIndex].id;
+        }
+
         await html5QrCode.start(
-          { facingMode: "environment" },
+          cameraArg,
           config,
           onScanSuccess,
           onScanFailure
@@ -494,14 +556,81 @@
         btn.innerHTML = "⏹️ 關閉相機";
         btn.style.backgroundColor = "#dc2626";
 
+        checkTorchSupport();
+
       } catch (err) {
-        console.error("相機啟動失敗:", err);
-        alert("無法啟動相機！請確認已授予相機使用權限。\n" + err);
-        const actionText = currentScanMode === "checkIn" ? "【簽到】" : "【簽退】";
-        btn.innerHTML = `📷 開啟相機進行${actionText}`;
-        btn.style.backgroundColor = "";
-        document.getElementById("cameraWrapper").style.display = "none";
-        isCameraRunning = false;
+        console.warn("特定鏡頭或高解析啟動失敗，嘗試標準降級啟動:", err);
+        try {
+          // 降級容錯方案：使用最基本 environment 啟動
+          await html5QrCode.start(
+            { facingMode: "environment" },
+            {
+              fps: 15,
+              qrbox: function(w, h) { return { width: Math.floor(w * 0.85), height: Math.floor(h * 0.5) }; },
+              formatsToSupport: [
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.QR_CODE
+              ]
+            },
+            onScanSuccess,
+            onScanFailure
+          );
+          isCameraRunning = true;
+          btn.innerHTML = "⏹️ 關閉相機";
+          btn.style.backgroundColor = "#dc2626";
+        } catch (fallbackErr) {
+          console.error("相機啟動失敗:", fallbackErr);
+          alert("無法啟動相機！請確認已授予相機使用權限。\n若使用 LINE 或 FB 請點右上角『以預設瀏覽器開啟』。\n錯誤細節：" + fallbackErr);
+          const actionText = currentScanMode === "checkIn" ? "【簽到】" : "【簽退】";
+          btn.innerHTML = `📷 開啟相機進行${actionText}`;
+          btn.style.backgroundColor = "";
+          document.getElementById("cameraWrapper").style.display = "none";
+          isCameraRunning = false;
+        }
+      }
+    }
+
+    async function switchCamera() {
+      if (availableCameras.length <= 1) {
+        alert("此手機目前僅偵測到單一鏡頭。");
+        return;
+      }
+      currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+      const camName = availableCameras[currentCameraIndex].label || `鏡頭 ${currentCameraIndex + 1}`;
+      console.log("切換至鏡頭:", camName);
+      await stopCamera();
+      document.getElementById("cameraWrapper").style.display = "block";
+      await startCamera();
+    }
+
+    function checkTorchSupport() {
+      const btnTorch = document.getElementById("btnTorch");
+      if (!btnTorch) return;
+      try {
+        const track = html5QrCode.getRunningTrackCameraCapabilities();
+        if (track && typeof track.torchFeature === "function" && track.torchFeature().isSupported()) {
+          btnTorch.style.display = "inline-block";
+        } else {
+          btnTorch.style.display = "none";
+        }
+      } catch (e) {
+        btnTorch.style.display = "none";
+      }
+    }
+
+    async function toggleTorch() {
+      const btnTorch = document.getElementById("btnTorch");
+      try {
+        const track = html5QrCode.getRunningTrackCameraCapabilities();
+        if (track && typeof track.torchFeature === "function" && track.torchFeature().isSupported()) {
+          isTorchOn = !isTorchOn;
+          await track.torchFeature().apply(isTorchOn);
+          btnTorch.innerHTML = isTorchOn ? "💡 關閉補光燈" : "💡 補光燈";
+          btnTorch.style.background = isTorchOn ? "#15803d" : "#f59e0b";
+        }
+      } catch (e) {
+        console.warn("補光燈切換失敗:", e);
       }
     }
 
@@ -513,6 +642,13 @@
           console.warn("相機停止異常:", e);
         }
         isCameraRunning = false;
+        isTorchOn = false;
+        const btnTorch = document.getElementById("btnTorch");
+        if (btnTorch) {
+          btnTorch.style.display = "none";
+          btnTorch.innerHTML = "💡 補光燈";
+          btnTorch.style.background = "#f59e0b";
+        }
       }
     }
 

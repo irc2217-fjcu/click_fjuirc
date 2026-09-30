@@ -102,6 +102,23 @@
       border: 2px solid #d97706;
     }
 
+    .btn-box-size {
+      padding: 3px 8px;
+      background: #334155;
+      color: #cbd5e1;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-box-size.active {
+      background: #2563eb !important;
+      color: #ffffff !important;
+      border-color: #3b82f6 !important;
+    }
+
     /* 表單格線 */
     .form-grid {
       display: grid;
@@ -219,14 +236,23 @@
       </button>
       <div id="cameraWrapper" style="display: none; margin-top: 12px; border-radius: 14px; overflow: hidden; border: 2px dashed #cbd5e1; background: #000; position: relative;">
         <div id="reader"></div>
-        <div id="cameraToolbar" style="display: flex; gap: 8px; justify-content: center; padding: 8px; background: #1e293b;">
+        <div id="cameraToolbar" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; padding: 8px; background: #1e293b;">
           <button id="btnSwitchCameraTemp" onclick="switchCameraTemp()" type="button" style="padding: 6px 12px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; display: none;">
             🔄 切換鏡頭 (若模糊請點此)
           </button>
+          <div style="display: flex; align-items: center; gap: 4px; background: #0f172a; padding: 4px 8px; border-radius: 8px; color: #e2e8f0; font-size: 12px;">
+            <span>📐 框格:</span>
+            <button type="button" onclick="setQuickBoxSizeTemp(70)" class="btn-box-size" id="btnBoxTemp70">標準</button>
+            <button type="button" onclick="setQuickBoxSizeTemp(88)" class="btn-box-size active" id="btnBoxTemp88">寬幅</button>
+            <button type="button" onclick="setQuickBoxSizeTemp(98)" class="btn-box-size" id="btnBoxTemp98">滿版</button>
+          </div>
         </div>
         <div style="font-size: 12px; color: #fff; background: rgba(0,0,0,0.75); padding: 6px; text-align: center;">
           🎯 請將身分證背面條碼對準紅框 (距離約 15-20 公分，避免反光)
         </div>
+      </div>
+      <div style="font-size: 12px; color: #b45309; margin-top: 8px; text-align: center;">
+        ⚡ 亦支援 USB / 藍牙條碼掃描槍：直接對準身分證掃描，將自動填入身分證號！
       </div>
     </div>
 
@@ -321,6 +347,26 @@
     let isCameraRunning = false;
     let availableCameras = [];
     let currentCameraIndex = 0;
+    let scanBoxScaleTemp = 0.88;
+
+    async function setQuickBoxSizeTemp(pct) {
+      scanBoxScaleTemp = pct / 100;
+      [70, 88, 98].forEach(p => {
+        const b = document.getElementById("btnBoxTemp" + p);
+        if (b) {
+          if (p === pct) b.classList.add("active");
+          else b.classList.remove("active");
+        }
+      });
+      if (isCameraRunning) {
+        if (html5QrCode) {
+          try { await html5QrCode.stop(); } catch(e){}
+          isCameraRunning = false;
+        }
+        document.getElementById("cameraWrapper").style.display = "block";
+        await startCamera();
+      }
+    }
 
     async function initCamerasTemp() {
       try {
@@ -377,8 +423,8 @@
           fps: 20,
           qrbox: function(w, h) {
             return {
-              width: Math.max(Math.floor(w * 0.88), 240),
-              height: Math.max(Math.floor(Math.min(h * 0.52, 180)), 120)
+              width: Math.max(Math.floor(w * scanBoxScaleTemp), 200),
+              height: Math.max(Math.floor(Math.min(h * (scanBoxScaleTemp * 0.58), 240)), 110)
             };
           },
           formatsToSupport: [
@@ -532,6 +578,44 @@
       document.getElementById('tempForm').reset();
       document.getElementById('tName').focus();
     }
+
+    // =========================================================================
+    // 實體條碼槍 (USB / 藍牙 / 2.4G) 自動填入身分證字號監聽
+    // =========================================================================
+    let tempBarcodeGunBuffer = "";
+    let tempLastKeyTime = 0;
+
+    window.addEventListener("keydown", function(e) {
+      // 若當前焦點在姓名、電話、學校等一般文字輸入框，正常輸入不作攔截
+      if (document.activeElement && document.activeElement.tagName === "INPUT" && document.activeElement.id !== "tIdNumber") {
+        // 如果正在輸入姓名等，除非快速連發條碼槍訊號才處理
+        const diff = Date.now() - tempLastKeyTime;
+        if (diff > 50) return;
+      }
+
+      const now = Date.now();
+      const diff = now - tempLastKeyTime;
+      tempLastKeyTime = now;
+
+      if (e.key === "Enter") {
+        if (tempBarcodeGunBuffer.length >= 6) {
+          let raw = tempBarcodeGunBuffer.replace(/\*/g, '').trim().toUpperCase();
+          const match = raw.match(/[A-Z][0-9A-Z][0-9]{8}/);
+          const cleanId = match ? match[0] : raw;
+          if (cleanId) {
+            e.preventDefault();
+            document.getElementById('tIdNumber').value = cleanId;
+            document.getElementById('tName').focus();
+          }
+        }
+        tempBarcodeGunBuffer = "";
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (diff > 250) {
+          tempBarcodeGunBuffer = "";
+        }
+        tempBarcodeGunBuffer += e.key;
+      }
+    });
   </script>
 </body>
 </html>
